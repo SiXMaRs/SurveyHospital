@@ -2,3 +2,4 @@ mysqlclient
 django
 djangorestframework
 djangorestframework-simplejwt
+openpyxl   

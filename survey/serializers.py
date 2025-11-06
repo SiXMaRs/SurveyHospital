@@ -27,4 +27,15 @@ class USerDetailSerializer(serializers.ModelSerializer):
         model = User
         fields = ('id', 'username', 'email', 'groups', "manged_points")
 
-        
+# Serializer หลักสำหรับ ServicePoint
+class ServicePointSerializer(serializers.ModelSerializer):
+    # เราใช้ Serializer ด้านบนมาแสดงข้อมูล managers
+    # 
+    # 'many=True' เพราะ ServicePoint 1 จุด มี Manager ได้หลายคน
+    # 'read_only=True' เพราะเราจะใช้ Serializer นี้ "อ่าน" ข้อมูลอย่างเดียว
+    managers = USerDetailSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = ServicePoint
+        # fields = '__all__' # หรือจะระบุ field เองก็ได้
+        fields = ['id', 'name', 'code', 'managers']

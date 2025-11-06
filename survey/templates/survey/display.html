@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>แบบสอบถามความพึงพอใจ</title>
+    <style>
+        /* (Style... เหมือนเดิม) */
+    </style>
+</head>
+<body>
+
+    <div style="text-align: right;">
+        <a href="?lang=th">ภาษาไทย</a> | <a href="?lang=en">English</a>
+    </div>
+
+    <h1>โรงพยาบาลตระการพืชผล</h1>
+    <p>จุดบริการ: <strong>{{ service_point.name }}</strong></p>
+
+    <hr>
+
+    {% if survey_version %}
+        
+        {% if lang == 'en' and survey_version.survey.title_content.en %}
+            <h2>{{ survey_version.survey.title_content.en }}</h2>
+        {% else %}
+            <h2>{{ survey_version.survey.title_content.th }}</h2>
+        {% endif %}
+
+        
+        <form action="{% url 'survey:survey_submit' version_id=survey_version.id %}" method="POST">
+            {% csrf_token %}
+            <input type="hidden" name="service_point_id" value="{{ service_point.id }}">
+
+            {% for section in survey_version.sections.all %}
+            <div class="section">
+                
+                {% for question in section.questions.all %}
+                <div class="question">
+
+                    {% if lang == 'en' and question.text_content.en %}
+                        <label for="question_{{ question.id }}">{{ question.text_content.en }}</label>
+                    {% else %}
+                        <label for="question_{{ question.id }}">{{ question.text_content.th }}</label>
+                    {% endif %}
+
+
+                    {% if question.question_type == 'RATING_5' %}
+                        <div class="option">
+                            (1) <input type="radio" name="question_{{ question.id }}" value="1" {% if question.is_required %}required{% endif %}>
+                            (2) <input type="radio" name="question_{{ question.id }}" value="2">
+                            (3) <input type="radio" new="question_{{ question.id }}" value="3">
+                            (4) <input type="radio" name="question_{{ question.id }}" value="4">
+                            (5) <input type="radio" name="question_{{ question.id }}" value="5"> 
+                            
+                            {% if lang == 'en' %}(Very Satisfied){% else %}(พึงพอใจมาก){% endif %}
+                        </div>
+
+                    {% elif question.question_type == 'TEXTAREA' %}
+                        <textarea name="question_{{ question.id }}" id="question_{{ question.id }}" rows="4"></textarea>
+                    
+                    {% endif %}
+                </div>
+                {% endfor %}
+
+            </div>
+            {% endfor %}
+
+            <button type="submit">
+                {% if lang == 'en' %}Submit{% else %}ส่งคำตอบ{% endif %}
+            </button>
+        </form>
+
+    {% else %}
+        {% if lang == 'en' %}
+            <h2>Survey Not Found</h2>
+            <p>Sorry, no survey is active for this service point.</p>
+        {% else %}
+            <h2>ไม่พบแบบสอบถาม</h2>
+            <p>ขออภัย ขณะนี้ไม่มีแบบสอบถามที่พร้อมใช้งานสำหรับจุดบริการนี้</p>
+        {% endif %}
+    {% endif %}
+
+</body>
+</html>
