@@ -1,0 +1,245 @@
+- model: survey.servicepoint
+  pk: 1
+  fields:
+    code: er_dept
+    name: กลุ่มงานเวชศาสตร์ฉุกเฉิน
+- model: survey.servicepoint
+  pk: 2
+  fields:
+    code: med_dept
+    name: กลุ่มงานอายุรกรรม
+- model: survey.servicepoint
+  pk: 3
+  fields:
+    code: ortho_dept
+    name: กลุ่มงานศัลยกรรมออร์โธปิดิกส์
+- model: survey.servicepoint
+  pk: 4
+  fields:
+    code: ped_dept
+    name: กลุ่มงานกุมารเวชกรรม
+- model: survey.servicepoint
+  pk: 5
+  fields:
+    code: eye_dept
+    name: กลุ่มงานจักษุวิทยา
+- model: survey.servicepoint
+  pk: 6
+  fields:
+    code: nutrition_dept
+    name: กลุ่มงานโภชนวิทยา
+- model: survey.servicepoint
+  pk: 7
+  fields:
+    code: obgyn_dept
+    name: กลุ่มงานสูติ-นรีเวชกรรม
+- model: survey.servicepoint
+  pk: 8
+  fields:
+    code: anes_dept
+    name: กลุ่มงานวิสัญญีวิทยา
+- model: survey.servicepoint
+  pk: 9
+  fields:
+    code: psych_dept
+    name: กลุ่มงานจิตเวชและยาเสพติด
+- model: survey.servicepoint
+  pk: 10
+  fields:
+    code: dental_dept
+    name: กลุ่มงานทันตกรรม
+- model: survey.servicepoint
+  pk: 11
+  fields:
+    code: xray_dept
+    name: กลุ่มงานรังสีวิทยา
+- model: survey.servicepoint
+  pk: 12
+  fields:
+    code: lab_dept
+    name: กลุ่มงานเทคนิคการแพทย์และพยาธิวิทยาคลินิก
+- model: survey.servicepoint
+  pk: 13
+  fields:
+    code: rehab_dept
+    name: กลุ่มงานเวชกรรมฟื้นฟู
+- model: survey.servicepoint
+  pk: 14
+  fields:
+    code: pharm_dept
+    name: กลุ่มงานเภสัชกรรม
+- model: survey.servicepoint
+  pk: 15
+  fields:
+    code: opd_dept
+    name: กลุ่มงานผู้ป่วยนอก
+- model: survey.servicepoint
+  pk: 16
+  fields:
+    code: thai_med_dept
+    name: การแพทย์แผนไทยและการแพทย์ทางเลือก
+- model: survey.servicepoint
+  pk: 17
+  fields:
+    code: socmed_dept
+    name: กลุ่มงานเวชกรรมสังคม
+- model: survey.servicepoint
+  pk: 18
+  fields:
+    code: healthedu_dept
+    name: กลุ่มงานสุขศึกษา
+- model: survey.servicepoint
+  pk: 19
+  fields:
+    code: occmed_dept
+    name: กลุ่มงานอาชีวเวชกรรม
+- model: survey.servicepoint
+  pk: 20
+  fields:
+    code: com_nurse
+    name: กลุ่มงานการพยาบาลชุมชน
+- model: survey.servicepoint
+  pk: 21
+  fields:
+    code: er_nurse
+    name: กลุ่มการพยาบาลผู้ป่วยอุบัติเหตุฉุกเฉิน
+- model: survey.servicepoint
+  pk: 22
+  fields:
+    code: opd_nurse
+    name: กลุ่มการพยาบาลผู้ป่วยนอก
+- model: survey.servicepoint
+  pk: 23
+  fields:
+    code: icu_nurse
+    name: กลุ่มการพยาบาลผู้ป่วยหนัก
+- model: survey.servicepoint
+  pk: 24
+  fields:
+    code: delivery_nurse
+    name: กลุ่มการพยาบาลผู้ป่วยคลอด
+- model: survey.servicepoint
+  pk: 25
+  fields:
+    code: or_nurse
+    name: กลุ่มการพยาบาลผู้ป่วยผ่าตัด
+- model: survey.servicepoint
+  pk: 26
+  fields:
+    code: anes_nurse
+    name: กลุ่มงานการพยาบาลวิสัญญี
+- model: survey.servicepoint
+  pk: 27
+  fields:
+    code: med_nurse
+    name: กลุ่มการพยาบาลผู้ป่วยอายุรกรรม
+- model: survey.servicepoint
+  pk: 28
+  fields:
+    code: surg_nurse
+    name: กลุ่มการพยาบาลผู้ป่วยศัลยกรรม
+- model: survey.servicepoint
+  pk: 29
+  fields:
+    code: obgyn_nurse
+    name: กลุ่มการพยาบาลผู้ป่วยสูติ-นรีเวช
+- model: survey.servicepoint
+  pk: 30
+  fields:
+    code: psych_nurse
+    name: กลุ่มการพยาบาลจิตเวช
+- model: survey.servicepoint
+  pk: 31
+  fields:
+    code: ped_nurse
+    name: กลุ่มการพยาบาลผู้ป่วยกุมารเวชกรรม
+- model: survey.servicepoint
+  pk: 32
+  fields:
+    code: ortho_nurse
+    name: กลุ่มการพยาบาลผู้ป่วยออร์โธปิดิกส์
+- model: survey.servicepoint
+  pk: 33
+  fields:
+    code: ent_nurse
+    name: กลุ่มการพยาบาลผู้ป่วยโสต ศอ นาสิก
+- model: survey.servicepoint
+  pk: 34
+  fields:
+    code: ic_nurse
+    name: กลุ่มงานการพยาบาลด้านการควบคุมและป้องกันการติดเชื้อ
+- model: survey.servicepoint
+  pk: 35
+  fields:
+    code: special_dept
+    name: กลุ่มการพยาบาลตรวจรักษาพิเศษ
+- model: survey.servicepoint
+  pk: 36
+  fields:
+    code: nurse_research
+    name: กลุ่มงานวิจัยและพัฒนากาพยาบาล
+- model: survey.servicepoint
+  pk: 37
+  fields:
+    code: admin_dept
+    name: กลุ่มงานบริหารทั่วไป
+- model: survey.servicepoint
+  pk: 38
+  fields:
+    code: supply_dept
+    name: กลุ่มงานพัสดุ
+- model: survey.servicepoint
+  pk: 39
+  fields:
+    code: engineer_dept
+    name: กลุ่มงานโครงสร้างพื้นฐานและวิศวกรรมทางการแพทย์
+- model: survey.servicepoint
+  pk: 40
+  fields:
+    code: finance_dept
+    name: กลุ่มงานการเงิน
+- model: survey.servicepoint
+  pk: 41
+  fields:
+    code: account_dept
+    name: กลุ่มงานบัญชี
+- model: survey.servicepoint
+  pk: 42
+  fields:
+    code: insurance_dept
+    name: กลุ่มงานประกันสุขภาพ
+- model: survey.servicepoint
+  pk: 43
+  fields:
+    code: plan_dept
+    name: กลุ่มงานยุทธศาสตร์และแผนงานโครงการ
+- model: survey.servicepoint
+  pk: 44
+  fields:
+    code: hrd_dept
+    name: กลุ่มงานพัฒนาทรัพยากรบุคคล
+- model: survey.servicepoint
+  pk: 45
+  fields:
+    code: quality_dept
+    name: กลุ่มงานพัฒนาคุณภาพบริการและมาตรฐาน
+- model: survey.servicepoint
+  pk: 46
+  fields:
+    code: it_dept
+    name: กลุ่มงานเทคโนโลยีสารสนเทศ
+- model: survey.servicepoint
+  pk: 47
+  fields:
+    code: digital_dept
+    name: กลุ่มงานสุขภาพดิจิทัล
+- model: survey.servicepoint
+  pk: 48
+  fields:
+    code: record_dept # (จากรูป 49 คือ record_dept)
+    name: กลุ่มงานเวชระเบียนและข้อมูลทางการแพทย์
+- model: survey.servicepoint
+  pk: 49
+  fields:
+    code: hr_dept # (สมมติ 49 ชื่อ im_dept นะครับ ในรูปไม่ชัดเจน)
+    name: กลุ่มงานทรัพยากรบุคคล
