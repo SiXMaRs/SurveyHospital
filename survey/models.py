@@ -27,70 +27,52 @@ class ServicePoint(models.Model):
         return f"{self.code} - {self.name}"
     
 class Survey(models.Model):
-    """
-    ตารางแม่ของแบบสอบถาม (ตัวหลัก)
-    เช่น "แบบสอบถามความพึงพอใจ รพ.ตระการพืชผล"
-    """
-    title = models.CharField(max_length=255, verbose_name="ชื่อแบบสอบถาม")
-    description = models.TextField(blank=True, null=True, verbose_name="คำอธิบาย")
+    """ (แบบสอบถามหลัก) เช่น "ประเมินความพึงพอใจ" """
+    
+    # (เปลี่ยนจาก title (CharField) เป็น th/en)
+    title_th = models.CharField(max_length=255, verbose_name="ชื่อแบบสอบถาม (TH)")
+    title_en = models.CharField(max_length=255, verbose_name="ชื่อแบบสอบถาม (EN)", blank=True, null=True)
+    
     created_by_user = models.ForeignKey(
-        getattr(settings, 'AUTH_USER_MODEL', 'auth.User'), # เชื่อมโยงไปที่ User (Admin/Manager) with fallback
-        on_delete=models.SET_NULL,
-        null=True,
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL, null=True,
         verbose_name="สร้างโดย"
     )
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="วันที่สร้าง")
-    updated_at = models.DateTimeField(auto_now=True, verbose_name="แก้ไขล่าสุด")
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        verbose_name = "แบบสอบถาม (Survey)"
-        verbose_name_plural = "แบบสอบถาม (Surveys)"
-
+        verbose_name = "1. แบบสอบถาม (Survey)"
+        verbose_name_plural = "1. แบบสอบถาม (Survey)"
+    
     def __str__(self):
-        return self.title
+        return self.title_th
 
 class SurveyVersion(models.Model):
-    """
-    ตารางเวอร์ชันของแบบสอบถาม (v1, v2)
-    นี่คือ "ตัวจริง" ที่จะถูกนำไปผูกกับ ServicePoint
-    """
+    # (คลาสนี้ไม่ต้องแก้ไข - Section จะถูกลบจาก 'related_name' อัตโนมัติ)
     class Status(models.TextChoices):
         DRAFT = 'DRAFT', 'ฉบับร่าง'
         ACTIVE = 'ACTIVE', 'ใช้งาน'
         ARCHIVED = 'ARCHIVED', 'เก็บถาวร'
 
-    survey = models.ForeignKey(
-        Survey, 
-        on_delete=models.CASCADE, 
-        related_name="versions",
-        verbose_name="แบบสอบถามหลัก"
-    )
-    version_number = models.PositiveIntegerField(default=1, verbose_name="เวอร์ชันที่")
-    status = models.CharField(
-        max_length=20,
-        choices=Status.choices,
-        default=Status.DRAFT,
-        verbose_name="สถานะ"
-    )
-    default_lang = models.CharField(max_length=10, default='th', verbose_name="ภาษาหลัก")
-    published_at = models.DateTimeField(blank=True, null=True, verbose_name="วันที่เริ่มใช้งาน")
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="วันที่สร้าง")
+    survey = models.ForeignKey(Survey, on_delete=models.CASCADE, related_name="versions")
+    version_number = models.CharField(max_length=50, verbose_name="ชื่อ/เลข เวอร์ชัน")
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT)
     
-    # ตารางเชื่อม ManyToMany ว่าเวอร์ชันนี้ ให้แสดงที่จุดบริการใดบ้าง
+    created_by_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL, null=True, blank=True,
+        verbose_name="สร้างโดย",
+        related_name="created_survey_versions"
+    )
+    
     service_points = models.ManyToManyField(
         ServicePoint,
-        through='SurveyServicePoint', # ใช้ตารางเชื่อมด้านล่าง
+        through='SurveyServicePoint',
         related_name='survey_versions',
         verbose_name="จุดบริการที่ใช้งาน"
     )
-
-    class Meta:
-        verbose_name = "เวอร์ชันแบบสอบถาม"
-        verbose_name_plural = "เวอร์ชันแบบสอบถาม"
-        unique_together = ('survey', 'version_number')
-
-    def __str__(self):
-        return f"{self.survey.title} (v{self.version_number})"
+    # ... (ฟังก์ชัน __str__ ฯลฯ) ...
+    def __str__(self): return f"{self.survey.title_th} - {self.version_number}"
 
 class SurveyServicePoint(models.Model):
     """
@@ -108,86 +90,70 @@ class SurveyServicePoint(models.Model):
     def __str__(self):
         return f"{self.survey_version} @ {self.service_point}"
 
-class Section(models.Model):
-    """
-    ตารางส่วน (หรือหน้า) ของแบบสอบถาม
-    เช่น "ส่วนที่ 1: ข้อมูลทั่วไป"
-    """
+
+class Question(models.Model):
+    class QuestionType(models.TextChoices):
+        RATING_5 = 'RATING_5', 'คะแนน 1-5 ดาว'
+        YES_NO = 'YES_NO', 'ใช่ / ไม่ใช่'
+        TEXTAREA = 'TEXTAREA', 'ข้อความ (หลายบรรทัด)'
+        TEXT_SHORT = 'TEXT_SHORT', 'ข้อความ (บรรทัดเดียว)'
+        MULTIPLE_CHOICE = 'MULTIPLE_CHOICE', 'หลายตัวเลือก (เลือก 1)'
+        CHECKBOXES = 'CHECKBOXES', 'หลายตัวเลือก (เลือกหลายอัน)'
+
+    # --- (นี่คือส่วนที่แก้ไข) ---
+    # (ลบ 'section' ForeignKey)
+    # section = models.ForeignKey(Section, on_delete=models.CASCADE, related_name="questions")
+    
+    # (เพิ่ม 'survey_version' ForeignKey)
     survey_version = models.ForeignKey(
         SurveyVersion, 
         on_delete=models.CASCADE, 
-        related_name="sections",
-        verbose_name="เวอร์ชันแบบสอบถาม"
+        related_name="questions",
+        verbose_name="เวอร์ชันของแบบสอบถาม"
     )
-    title_content = models.JSONField(verbose_name="ชื่อส่วน (JSON)")
-    description_content = models.JSONField(blank=True, null=True, verbose_name="คำอธิบาย (JSON)")
-    sort_order = models.PositiveIntegerField(default=0, verbose_name="ลำดับ")
+    
+    null=True, 
+    blank=True
+    # --- (จบส่วนที่แก้ไข) ---
 
+    question_type = models.CharField(max_length=20, choices=QuestionType.choices, verbose_name="ประเภทคำถาม")
+    text_th = models.TextField(verbose_name="ข้อความคำถาม (TH)")
+    text_en = models.TextField(verbose_name="ข้อความคำถาม (EN)", blank=True, null=True)
+    order = models.PositiveIntegerField(default=0, verbose_name="ลำดับ")
+    is_required = models.BooleanField(default=False, verbose_name="บังคับตอบ")
+    
+    created_by_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL, null=True, blank=True,
+        verbose_name="สร้างโดย",
+        related_name="created_questions"
+    )
+    # (skip_logic, Meta, __str__ ... เหมือนเดิม)
     class Meta:
-        verbose_name = "ส่วน (Section)"
-        verbose_name_plural = "ส่วน (Sections)"
-        ordering = ['sort_order']
-
-    def __str__(self):
-        return self.title_content.get('th', f'Section {self.id}')
-
-class Question(models.Model):
-        """
-        ตารางคำถามแต่ละข้อ
-        """
-        # --- นี่คือส่วนที่แก้ไข ---
-        class QuestionType(models.TextChoices):
-            RATING_5 = 'RATING_5', 'คะแนน 1-5 ดาว (Rating)'
-            TEXTAREA = 'TEXTAREA', 'ตอบยาว (Textarea)'
-        # --- จบส่วนแก้ไข ---
-
-        section = models.ForeignKey(
-            Section, 
-            on_delete=models.CASCADE, 
-            related_name="questions",
-            verbose_name="ส่วน"
-        )
-        question_type = models.CharField(
-            max_length=20,
-            choices=QuestionType.choices,
-            verbose_name="ประเภทคำถาม"
-        )
-        text_content = models.JSONField(verbose_name="ข้อความคำถาม (JSON)")
-        is_required = models.BooleanField(default=False, verbose_name="บังคับตอบ")
-        sort_order = models.PositiveIntegerField(default=0, verbose_name="ลำดับ")
-        
-        # Skip Logic ยังคงใช้ได้ ถ้าคุณต้องการซ่อน Textarea
-        skip_logic = models.JSONField(blank=True, null=True, verbose_name="Skip Logic (JSON)")
-
-        class Meta:
-            verbose_name = "คำถาม"
-            verbose_name_plural = "คำถาม"
-            ordering = ['sort_order']
-
-        def __str__(self):
-            return self.text_content.get('th', f'Question {self.id}')
-
+        verbose_name = "4. คำถาม (Question)"
+        verbose_name_plural = "4. คำถาม (Question)"
+        ordering = ['order']
+    def __str__(self): return self.text_th or f'Question {self.id}'
+    
 class QuestionOption(models.Model):
-    """
-    ตารางตัวเลือกของคำถาม (สำหรับ Radio, Checkbox)
-    """
-    question = models.ForeignKey(
-        Question, 
-        on_delete=models.CASCADE, 
-        related_name="options",
-        verbose_name="คำถาม"
-    )
-    text_content = models.JSONField(verbose_name="ข้อความตัวเลือก (JSON)")
-    value = models.CharField(max_length=100, blank=True, null=True, verbose_name="ค่าที่เก็บจริง")
-    sort_order = models.PositiveIntegerField(default=0, verbose_name="ลำดับ")
+    """ (ตัวเลือก) เช่น "ใช่", "ไม่" """
+    question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name="options")
+    
+    # (เปลี่ยนจาก JSON เป็น th/en)
+    text_th = models.CharField(max_length=255, verbose_name="ข้อความตัวเลือก (TH)")
+    text_en = models.CharField(max_length=255, verbose_name="ข้อความตัวเลือก (EN)", blank=True, null=True)
+
+    # (เปลี่ยน 'sort_order' เป็น 'order')
+    order = models.PositiveIntegerField(default=0, verbose_name="ลำดับ")
+    value = models.CharField(max_length=100, blank=True, null=True, verbose_name="ค่าที่เก็บจริง (ถ้ามี)")
 
     class Meta:
-        verbose_name = "ตัวเลือกคำถาม"
-        verbose_name_plural = "ตัวเลือกคำถาม"
-        ordering = ['sort_order']
+        verbose_name = "5. ตัวเลือก (Option)"
+        verbose_name_plural = "5. ตัวเลือก (Option)"
+        ordering = ['order'] # (แก้ 'sort_order' เป็น 'order')
 
     def __str__(self):
-        return self.text_content.get('th', f'Option {self.id}')
+        return self.text_th # (แก้ 'text_content' เป็น 'text_th')
 
 
 # --- 3. ตารางกลุ่มเก็บคำตอบ (Response Data) ---

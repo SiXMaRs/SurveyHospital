@@ -45,12 +45,11 @@
             <span>ผู้ดูแลจุดบริการ</span>
         </a>
 
-        <a href="{% url 'admin:survey_surveyversion_changelist' %}" 
-           class="flex items-center px-4 py-3 rounded-lg font-medium
-                  {% if '/admin/survey/surveyversion/' in request.path or '/admin/survey/survey/' in request.path or '/admin/survey/question/' in request.path %}
+        <a href="{% url 'survey:survey_management' %}"  class="flex items-center px-4 py-3 rounded-lg font-medium
+                  {% if '/survey/management/' in request.path or '/survey/questions/' in request.path or '/survey/sections/' in request.path %}
                     bg-blue-100 text-blue-600
                   {% else %}
-                    text-white hover:bg-[#27693d] hover:text-white
+                    text-gray-600 hover:bg-gray-100 hover:text-gray-900
                   {% endif %}">
             
             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-3" viewBox="0 0 20 20" fill="currentColor">

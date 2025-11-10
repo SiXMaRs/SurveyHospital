@@ -437,21 +437,5 @@
                 }
             }
         });
-
-        // --- Ticker (ข้อเสนอแนะ) ---
-        (function() {
-            const ticker = document.getElementById('feedback-ticker');
-            if (!ticker) return;
-            const items = ticker.getElementsByClassName('feedback-item');
-            if (items.length === 0) return;
-            let currentItem = 0;
-            items[0].classList.add('active'); 
-
-            setInterval(function() {
-                items[currentItem].classList.remove('active');
-                currentItem = (currentItem + 1) % items.length;
-                items[currentItem].classList.add('active');
-            }, 5000); // เปลี่ยนทุก 5 วินาที
-        })();
     </script>
 {% endblock %}

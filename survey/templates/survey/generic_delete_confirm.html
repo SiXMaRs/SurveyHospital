@@ -1,0 +1,36 @@
+{% extends 'index.html' %}
+
+{% block title %}ยืนยันการลบ{% endblock %}
+
+{% block main %}
+<div class="w-full max-w-lg mx-auto">
+    <div class="bg-white shadow-md rounded-lg p-8">
+        
+        <h1 class="text-2xl font-bold text-gray-800 mb-4">ยืนยันการลบ</h1>
+        
+        <p class="text-gray-700 mb-6">
+            คุณแน่ใจหรือไม่ว่าต้องการลบ: <br>
+            <strong class="text-lg text-red-700">{{ object }}</strong>
+        </p>
+        
+        <p class="text-sm text-gray-500 mb-6">
+            (การกระทำนี้ไม่สามารถย้อนกลับได้)
+        </p>
+
+        <form method="POST">
+            {% csrf_token %}
+            <div class="flex justify-end gap-3">
+                <a href="{% url 'survey:survey_management' %}" 
+                   class="px-5 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">
+                   ยกเลิก
+                </a>
+                <button type="submit" 
+                        class="px-5 py-2 bg-red-600 text-white rounded-lg shadow hover:bg-red-700">
+                    ยืนยันการลบ
+                </button>
+            </div>
+        </form>
+        
+    </div>
+</div>
+{% endblock %}

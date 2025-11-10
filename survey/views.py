@@ -1,12 +1,14 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from rest_framework import generics, permissions
+from django.urls import reverse_lazy
+from django.views.generic import ListView, CreateView, UpdateView, TemplateView, DeleteView
+from django.contrib.auth.mixins import LoginRequiredMixin
+from .forms import QuestionForm
 from .serializers import ManagerCreateSerializer, USerDetailSerializer, ServicePointSerializer
 from .models import *
 from django.utils import timezone 
 import json
-from django.db.models import Count, Avg, Q, F
-from django.db.models.functions import Cast , TruncDay
-from django.db.models import IntegerField
+from django.db.models import Count, Q
 from datetime import timedelta , datetime
 from django.contrib.auth.decorators import login_required 
 from django.contrib.auth.models import User, Group 
@@ -15,6 +17,9 @@ import openpyxl
 from openpyxl.utils import get_column_letter
 from django.http import HttpResponse
 import csv
+from .forms import (
+    QuestionForm, SurveyVersionForm, SurveyForm
+)
 
 class ManagerCreateView(generics.CreateAPIView):
     serializer_class = ManagerCreateSerializer
@@ -41,31 +46,34 @@ class ServicePointListView(generics.ListAPIView):
 def index(request):
     return render(request, "index.html")
 
-def survey_display_view(request, service_point_id):
-    """
-    View สำหรับ "แสดงผล" แบบสอบถามที่ Kiosk หรือ QR
-    โดยค้นหาจาก ServicePoint ID
-    """
-    
-    # 1. ค้นหา ServicePoint นี้ (ถ้าไม่เจอ จะ 404)
-    service_point = get_object_or_404(ServicePoint, id=service_point_id)
-    lang = request.GET.get('lang', 'th')    
-    
-    # 2. ค้นหา "เวอร์ชัน" ที่ "ACTIVE" และ "ผูก" อยู่กับ ServicePoint นี้
-    #    (เลือกอันที่เผยแพร่ล่าสุด)
-    active_version = SurveyVersion.objects.filter(
-        service_points=service_point, 
-        status='ACTIVE'
-    ).order_by('-published_at').first() # .first() เพื่อเอาอันเดียว
+# GIST: file:/survey/views.py (แก้ไข survey_display_view)
 
-    # 3. ส่งข้อมูลไปที่ Template
+def survey_display_view(request, pk):
+    """
+    (แก้ไข) View นี้สำหรับแสดงหน้า Kiosk (ที่ไม่มี Section)
+    """
+    service_point = get_object_or_404(ServicePoint, id=pk)
+    
+    # (หาเวอร์ชันที่ 'ACTIVE' ที่สุด ที่ผูกกับ ServicePoint นี้)
+    active_version = service_point.survey_versions.filter(
+        status=SurveyVersion.Status.ACTIVE
+    ).order_by('-id').first() # (เอาอันใหม่สุด)
+
+    # (ถ้าไม่เจอเวอร์ชันที่ Active เลย ก็ไม่ต้องแสดง)
+    if not active_version:
+        # (คุณอาจจะสร้างหน้า 'no_survey.html' สวยๆ)
+        return render(request, 'survey/survey_display.html', {
+            'service_point': service_point,
+            'active_version': None
+        })
+
+    # (เราส่ง 'active_version' ไปทั้งก้อน)
+    # (Template จะไปวน Loop 'active_version.questions.all' เอง)
     context = {
         'service_point': service_point,
-        'survey_version': active_version, # จะเป็น None ถ้าไม่เจอ
-        'lang': lang
+        'active_version': active_version,
     }
-    
-    return render(request, 'survey/display.html', context)
+    return render(request, 'survey/survey_display.html', context)
 
 def survey_submit_view(request, version_id):
     if request.method != 'POST':
@@ -113,11 +121,13 @@ def survey_submit_view(request, version_id):
 # GIST: file:/survey/views.py
 
 
-@login_required 
+# GIST: file:/survey/views.py (ฉบับแก้ไข FieldError)
+
+
 def dashboard_view(request):
     """
     View สำหรับหน้า Dashboard (Layout 6-Card Grid)
-    (แก้ไข NameError และ ValueError เรื่อง Timezone)
+    (แก้ไข FieldError หลังจากลบ Section)
     """
 
     # --- A. ตรรกะการกรอง (Filters) ---
@@ -130,12 +140,10 @@ def dashboard_view(request):
     if user.is_authenticated:
         if not user.is_superuser:
             base_service_points = user.managed_points.all()
-            # --- แก้ไขบรรทัดนี้ ---
             managers_list = User.objects.filter(id=user.id).prefetch_related('managed_points')
         else:
             try:
                 managers_group = Group.objects.get(name='Managers')
-                # --- แก้ไขบรรทัดนี้ ---
                 managers_list = managers_group.user_set.all().prefetch_related('managed_points')
             except Group.DoesNotExist:
                 managers_list = User.objects.none()
@@ -160,30 +168,31 @@ def dashboard_view(request):
     
     
     # --- B. สร้าง Queryset หลักที่ "กรองแล้ว" ---
-    # (ตัวแปรนี้คือตัวแปรที่ถูกต้อง)
     filtered_responses_for_charts_and_ticker = Response.objects.filter(
         service_point__in=base_service_points, 
-        submitted_at__gte=start_date,       
+        submitted_at__gte=start_date, 
         submitted_at__lt=end_date_for_query 
     )
 
     # --- C. คำนวณข้อมูล (สำหรับ 6 การ์ด) ---
 
     # Card 1: KPIs (ซ้ายบน)
-    total_active_questions = Question.objects.filter(
-        section__survey_version__status='ACTIVE'
-    ).distinct().count()
     
-    # (เราจะคำนวณ total_responses ทีหลัง)
+    # --- (นี่คือส่วนที่แก้ไข) ---
+    total_active_questions = Question.objects.filter(
+        survey_version__status='ACTIVE' # (ลบ 'section__' ออก)
+    ).distinct().count()
+    # --- (จบส่วนที่แก้ไข) ---
+    
+    total_responses = filtered_responses_for_charts_and_ticker.count()
 
     # Card 2: Service Point List (ขวาบน)
-    # (ใช้ข้อมูลรวม ไม่กรองตามวัน)
     all_service_points_with_counts = base_service_points.annotate(
         response_count=Count('response', filter=Q(response__service_point__in=base_service_points))
     ).order_by('-response_count')
 
     
-    # Card 3: กราฟแท่งรายสัปดาห์ (ซ้ายกลาง) - ใช้ข้อมูลที่กรองตามวัน
+    # Card 3: กราฟแท่งรายสัปดาห์ (ซ้ายกลาง)
     date_labels = []
     day_counts_dict = {}
     current_date = start_date
@@ -192,16 +201,8 @@ def dashboard_view(request):
         day_counts_dict[current_date] = 0
         current_date += timedelta(days=1)
 
-    # --- (นี่คือส่วนที่แก้ไข) ---
-    # 1. ลบบล็อกโค้ด 'filtered_responses_for_bar = ...' ที่มีปัญหาทิ้งไป
-    
-    # 2. แก้ไขบรรทัดนี้: 
-    #    เปลี่ยนจาก filtered_responses_for_bar 
-    #    เป็น filtered_responses_for_charts_and_ticker
     response_times = filtered_responses_for_charts_and_ticker.values_list('submitted_at', flat=True)
-    # --- (จบส่วนที่แก้ไข) ---
 
-    # 3. วนลูปและแปลงเป็นเวลาท้องถิ่น (Asia/Bangkok) ใน Python
     for submitted_at_utc in response_times:
         local_time = timezone.localtime(submitted_at_utc)
         date_only = local_time.date() 
@@ -210,10 +211,6 @@ def dashboard_view(request):
     
     bar_data_weekly = [day_counts_dict[day] for day in sorted(day_counts_dict.keys())]
     
-    # KPI Total Responses (คำนวณจากข้อมูลที่กรองแล้ว)
-    total_responses = filtered_responses_for_charts_and_ticker.count()
-
-
     # Card 4: Pie Chart (ขวากลาง)
     pie_data_all = base_service_points.annotate(
         response_count=Count('response', filter=Q(response__in=filtered_responses_for_charts_and_ticker))
@@ -223,9 +220,10 @@ def dashboard_view(request):
     pie_data = [sp.response_count for sp in pie_data_all]
     
     # Card 5: Admin List (ซ้ายล่าง)
-    # (managers_list ถูกเตรียมไว้แล้วใน A1)
+    # (managers_list ถูกเตรียมไว้แล้ว)
     
     # Card 6: Ticker (ขวาล่าง)
+    # (โค้ดนี้ของคุณถูกต้อง ไม่ได้เรียก 'section' ครับ)
     recent_feedback = ResponseAnswer.objects.filter(
         response__in=filtered_responses_for_charts_and_ticker, 
         question__question_type='TEXTAREA'
@@ -235,29 +233,16 @@ def dashboard_view(request):
 
     # --- D. ส่งข้อมูลทั้งหมดไปที่ Template ---
     context = {
-        # Card 1 KPIs
         'total_responses': total_responses,
         'total_service_points_in_view': base_service_points.count(),
         'total_active_questions': total_active_questions,
-
-        # Card 2 Service Point List
         'all_service_points_with_counts': all_service_points_with_counts,
-
-        # Card 3 Bar Chart
         'bar_labels_weekly': json.dumps(date_labels),
         'bar_data_weekly': json.dumps(bar_data_weekly),
-        
-        # Card 4 Pie Chart
         'pie_labels': json.dumps(pie_labels),
         'pie_data': json.dumps(pie_data),
-
-        # Card 5 Admin List
         'managers_list': managers_list,
-        
-        # Card 6 Ticker
         'recent_feedback': recent_feedback,
-
-        # Filter values
         'start_date': start_date_str,
         'end_date': end_date_str,
     }
@@ -406,3 +391,160 @@ def export_responses_excel(request):
     wb.save(response)
 
     return response
+
+
+# (ใช้ Mixin เพื่อบังคับ Login และเช็คสิทธิ์ Superadmin)
+class SuperuserRequiredMixin(LoginRequiredMixin):
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_superuser:
+            return self.handle_no_permission()
+        return super().dispatch(request, *args, **kwargs)
+
+# 1. หน้า "รายการ" คำถาม
+class QuestionListView(SuperuserRequiredMixin, TemplateView):
+    template_name = 'survey/question_list.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        # (ดึงข้อมูลสำหรับ 3 แท็บ)
+        if self.request.user.is_superuser:
+            # (แก้ 'select_related' และ 'order_by' ไม่ให้มี 'section')
+            context['all_questions'] = Question.objects.all().select_related('survey_version').order_by('survey_version', 'order')
+            context['all_versions'] = SurveyVersion.objects.all().select_related('survey').order_by('survey', 'status')
+            context['all_surveys'] = Survey.objects.all().order_by('title_th')
+        else:
+            # (สำหรับ Manager ในอนาคต)
+            context['all_questions'] = Question.objects.filter(created_by_user=self.request.user).select_related('survey_version').order_by('survey_version', 'order')
+            context['all_versions'] = SurveyVersion.objects.filter(created_by_user=self.request.user).select_related('survey').order_by('survey', 'status')
+            context['all_surveys'] = Survey.objects.filter(created_by_user=self.request.user).order_by('title_th')
+            
+        return context
+
+# --- (2. แก้ไข QuestionCreateView/UpdateView) ---
+# (ตรวจสอบว่า 'success_url' ถูกต้อง)
+
+class QuestionCreateView(SuperuserRequiredMixin, CreateView):
+    model = Question
+    form_class = QuestionForm
+    template_name = 'survey/question_form.html'
+    success_url = reverse_lazy('survey:survey_management') # (แก้เป็น 'survey_management')
+    
+    def form_valid(self, form):
+        form.save(user=self.request.user)
+        return redirect(self.success_url)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['page_title'] = 'เพิ่มคำถามใหม่'
+        context['cancel_url'] = reverse_lazy('survey:survey_management') # (แก้เป็น 'survey_management')
+        return context
+
+class QuestionUpdateView(SuperuserRequiredMixin, UpdateView):
+    model = Question
+    form_class = QuestionForm
+    template_name = 'survey/question_form.html'
+    success_url = reverse_lazy('survey:survey_management') # (แก้เป็น 'survey_management')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['page_title'] = 'แก้ไขคำถาม'
+        context['cancel_url'] = reverse_lazy('survey:survey_management') # (แก้เป็น 'survey_management')
+        return context
+
+# (Class QuestionUpdateView ... ไม่ต้องแก้)
+
+
+# --- 2. (เพิ่ม) 9 คลาสที่ขาดหายไป ---
+# (คัดลอกทั้งหมดนี้ไปวางต่อท้ายไฟล์)
+
+# ==================================
+# Mixin (สำหรับ Superuser)
+# ==================================
+class SuperuserRequiredMixin(LoginRequiredMixin):
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_superuser:
+            return self.handle_no_permission()
+        return super().dispatch(request, *args, **kwargs)
+
+
+# ==================================
+# 6. CRUD สำหรับ SurveyVersion
+# ==================================
+class SurveyVersionListView(SuperuserRequiredMixin, ListView):
+    model = SurveyVersion
+    template_name = 'survey/version_list.html' 
+    context_object_name = 'versions'
+    
+    def get_queryset(self):
+        return SurveyVersion.objects.all().select_related('survey').order_by('survey', 'status')
+
+class SurveyVersionCreateView(SuperuserRequiredMixin, CreateView):
+    model = SurveyVersion
+    form_class = SurveyVersionForm
+    template_name = 'survey/survey_version_form.html' 
+    success_url = reverse_lazy('survey:survey_management')
+    
+    def form_valid(self, form):
+        form.save(user=self.request.user)
+        return redirect(self.success_url)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['page_title'] = 'เพิ่มเวอร์ชัน (Version)'
+        context['cancel_url'] = reverse_lazy('survey:survey_management')
+        return context
+
+class SurveyVersionUpdateView(SuperuserRequiredMixin, UpdateView):
+    model = SurveyVersion
+    form_class = SurveyVersionForm
+    template_name = 'survey/survey_version_form.html'
+    success_url = reverse_lazy('survey:survey_management')
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['page_title'] = 'แก้ไขเวอร์ชัน (Version)'
+        context['cancel_url'] = reverse_lazy('survey:survey_management')
+        return context
+
+# ==================================
+# 7. CRUD สำหรับ Survey
+# ==================================
+class SurveyListView(SuperuserRequiredMixin, ListView):
+    model = Survey
+    template_name = 'survey/survey_list.html' 
+    context_object_name = 'surveys'
+
+class SurveyCreateView(SuperuserRequiredMixin, CreateView):
+    model = Survey
+    form_class = SurveyForm
+    template_name = 'survey/generic_form.html'
+    success_url = reverse_lazy('survey:survey_management')
+    
+    def form_valid(self, form):
+        form.save(user=self.request.user)
+        return redirect(self.success_url)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['page_title'] = 'เพิ่มแบบสอบถาม (Survey)'
+        context['cancel_url'] = reverse_lazy('survey:survey_management')
+        return context
+
+class SurveyUpdateView(SuperuserRequiredMixin, UpdateView):
+    model = Survey
+    form_class = SurveyForm
+    template_name = 'survey/generic_form.html'
+    success_url = reverse_lazy('survey:survey_management')
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['page_title'] = 'แก้ไขแบบสอบถาม (Survey)'
+        context['cancel_url'] = reverse_lazy('survey:survey_management')
+        return context
+    
+
+class QuestionDeleteView(SuperuserRequiredMixin, DeleteView):
+    model = Question
+    template_name = 'survey/generic_delete_confirm.html'
+    success_url = reverse_lazy('survey:survey_management')

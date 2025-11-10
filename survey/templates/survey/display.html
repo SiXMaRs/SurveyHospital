@@ -1,84 +1,90 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="th">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-g">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>แบบสอบถามความพึงพอใจ</title>
+    <title>แบบสอบถาม</title>
     <style>
-        /* (Style... เหมือนเดิม) */
+        body { font-family: sans-serif; padding: 20px; max-width: 600px; margin: auto; }
+        .question { margin-bottom: 25px; }
+        .question label { font-weight: bold; display: block; margin-bottom: 8px; }
+        .rating { display: flex; flex-direction: row-reverse; justify-content: flex-end; }
+        .rating input { display: none; }
+        .rating label {
+            font-size: 2.5em; color: #ddd; cursor: pointer;
+            padding: 0 5px;
+        }
+        .rating input:checked ~ label,
+        .rating label:hover,
+        .rating label:hover ~ label {
+            color: #f7d106; /* (สีดาว) */
+        }
+        button {
+            background-color: #007bff; color: white; padding: 12px 20px;
+            border: none; border-radius: 5px; font-size: 1.2em; cursor: pointer;
+        }
     </style>
 </head>
 <body>
 
-    <div style="text-align: right;">
-        <a href="?lang=th">ภาษาไทย</a> | <a href="?lang=en">English</a>
-    </div>
+    {% if active_version %}
+        <h1>{{ active_version.survey.title_th }}</h1>
+        <p>จุดบริการ: <strong>{{ service_point.name }}</strong></p>
+        <hr>
 
-    <h1>โรงพยาบาลตระการพืชผล</h1>
-    <p>จุดบริการ: <strong>{{ service_point.name }}</strong></p>
-
-    <hr>
-
-    {% if survey_version %}
-        
-        {% if lang == 'en' and survey_version.survey.title_content.en %}
-            <h2>{{ survey_version.survey.title_content.en }}</h2>
-        {% else %}
-            <h2>{{ survey_version.survey.title_content.th }}</h2>
-        {% endif %}
-
-        
-        <form action="{% url 'survey:survey_submit' version_id=survey_version.id %}" method="POST">
+        <form action="{% url 'survey:survey_submit' active_version.id %}" method="POST">
             {% csrf_token %}
             <input type="hidden" name="service_point_id" value="{{ service_point.id }}">
 
-            {% for section in survey_version.sections.all %}
-            <div class="section">
+            {% for question in active_version.questions.all %}
+            <div class="question">
                 
-                {% for question in section.questions.all %}
-                <div class="question">
+                <label for="q-{{ question.id }}">
+                    {{ question.text_th }}
+                    {% if question.is_required %} <span style="color: red;">*</span> {% endif %}
+                </label>
 
-                    {% if lang == 'en' and question.text_content.en %}
-                        <label for="question_{{ question.id }}">{{ question.text_content.en }}</label>
-                    {% else %}
-                        <label for="question_{{ question.id }}">{{ question.text_content.th }}</label>
-                    {% endif %}
-
-
-                    {% if question.question_type == 'RATING_5' %}
-                        <div class="option">
-                            (1) <input type="radio" name="question_{{ question.id }}" value="1" {% if question.is_required %}required{% endif %}>
-                            (2) <input type="radio" name="question_{{ question.id }}" value="2">
-                            (3) <input type="radio" new="question_{{ question.id }}" value="3">
-                            (4) <input type="radio" name="question_{{ question.id }}" value="4">
-                            (5) <input type="radio" name="question_{{ question.id }}" value="5"> 
-                            
-                            {% if lang == 'en' %}(Very Satisfied){% else %}(พึงพอใจมาก){% endif %}
-                        </div>
-
-                    {% elif question.question_type == 'TEXTAREA' %}
-                        <textarea name="question_{{ question.id }}" id="question_{{ question.id }}" rows="4"></textarea>
-                    
-                    {% endif %}
+                {% if question.question_type == 'RATING_5' %}
+                <div class="rating">
+                    <input type="radio" id="star5-{{ question.id }}" name="q-{{ question.id }}" value="5" {% if question.is_required %}required{% endif %}>
+                    <label for="star5-{{ question.id }}">★</label>
+                    <input type="radio" id="star4-{{ question.id }}" name="q-{{ question.id }}" value="4">
+                    <label for="star4-{{ question.id }}">★</label>
+                    <input type="radio" id="star3-{{ question.id }}" name="q-{{ question.id }}" value="3">
+                    <label for="star3-{{ question.id }}">★</label>
+                    <input type="radio" id="star2-{{ question.id }}" name="q-{{ question.id }}" value="2">
+                    <label for="star2-{{ question.id }}">★</label>
+                    <input type="radio" id="star1-{{ question.id }}" name="q-{{ question.id }}" value="1">
+                    <label for="star1-{{ question.id }}">★</label>
                 </div>
-                {% endfor %}
 
+                {% elif question.question_type == 'TEXTAREA' %}
+                <textarea name="q-{{ question.id }}" id="q-{{ question.id }}" 
+                          rows="4" style="width: 100%;"
+                          {% if question.is_required %}required{% endif %}>
+                </textarea>
+
+                {% elif question.question_type == 'YES_NO' %}
+                <div>
+                    <input type="radio" id="yes-{{ question.id }}" name="q-{{ question.id }}" value="Yes" {% if question.is_required %}required{% endif %}>
+                    <label for="yes-{{ question.id }}">ใช่</label>
+                </div>
+                <div>
+                    <input type="radio" id="no-{{ question.id }}" name="q-{{ question.id }}" value="No">
+                    <label for="no-{{ question.id }}">ไม่</label>
+                </div>
+                
+                {% endif %}
+                
             </div>
             {% endfor %}
-
-            <button type="submit">
-                {% if lang == 'en' %}Submit{% else %}ส่งคำตอบ{% endif %}
-            </button>
+            <button type="submit">ส่งคำตอบ</button>
         </form>
 
     {% else %}
-        {% if lang == 'en' %}
-            <h2>Survey Not Found</h2>
-            <p>Sorry, no survey is active for this service point.</p>
-        {% else %}
-            <h2>ไม่พบแบบสอบถาม</h2>
-            <p>ขออภัย ขณะนี้ไม่มีแบบสอบถามที่พร้อมใช้งานสำหรับจุดบริการนี้</p>
-        {% endif %}
+        <h1>ไม่พบแบบสอบถาม</h1>
+        <p>ไม่พบแบบสอบถามที่เปิดใช้งานสำหรับจุดบริการ <strong>{{ service_point.name }}</strong></p>
     {% endif %}
 
 </body>
