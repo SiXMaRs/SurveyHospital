@@ -1,0 +1,36 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Baloo+Bhai+2:wght@400..800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@100..900&display=swap" rel="stylesheet">
+    
+    <title>{% block title %}โรงพยาบาลตระการพืชผล{% endblock %}</title>
+
+    <style>
+        .baloo-bhai { font-family: "Baloo Bhai 2", serif; font-weight: 800; }
+        .noto { font-family: "Noto Sans Thai", sans-serif; }
+        
+        {% block extra_css %}{% endblock %}
+    </style>
+</head>
+
+<body class="flex flex-col h-screen bg-gray-100 noto"> {% include "elements/navbar.html" %}
+
+    <div class="flex flex-row flex-1 overflow-hidden"> {% include 'elements/sidebar.html' %}
+
+        <main class="flex-1 p-6 overflow-y-auto"> {% block main %}
+            {% endblock %}
+        </main>
+        
+    </div>
+    
+    {% block extra_js %}{% endblock %}
+
+</body>
+</html>

@@ -37,6 +37,9 @@ class ServicePointListView(generics.ListAPIView):
     # กำหนดสิทธิ์: ต้อง Login ก่อนถึงจะดูได้
     permission_classes = [permissions.IsAuthenticated]
 
+@login_required
+def index(request):
+    return render(request, "index.html")
 
 def survey_display_view(request, service_point_id):
     """
@@ -110,99 +113,108 @@ def survey_submit_view(request, version_id):
 # GIST: file:/survey/views.py
 
 
-@login_required # (แนะนำ) บังคับให้หน้านี้ต้องล็อกอิน
+@login_required 
 def dashboard_view(request):
     """
-    View สำหรับหน้า Dashboard (Layout 6-Card Grid ตาม image_b2cc77.png)
+    View สำหรับหน้า Dashboard (Layout 6-Card Grid)
+    (แก้ไข NameError และ ValueError เรื่อง Timezone)
     """
 
     # --- A. ตรรกะการกรอง (Filters) ---
     
     # A1: กรองตาม Manager (สิทธิ์ผู้ใช้)
     user = request.user
-    base_service_points = ServicePoint.objects.all() # Queryset เริ่มต้น
-    managers_list = User.objects.none() # Queryset ผู้ดูแล (เริ่มต้นว่างเปล่า)
+    base_service_points = ServicePoint.objects.all()
+    managers_list = User.objects.none() 
     
     if user.is_authenticated:
         if not user.is_superuser:
-            # ถ้าเป็น Manager (ไม่ใช่ Superadmin)
             base_service_points = user.managed_points.all()
-            managers_list = User.objects.filter(id=user.id) # แสดงแค่ตัวเอง
+            # --- แก้ไขบรรทัดนี้ ---
+            managers_list = User.objects.filter(id=user.id).prefetch_related('managed_points')
         else:
-            # ถ้าเป็น Superadmin
             try:
-                # ดึง User ทุกคนที่อยู่ในกลุ่ม "Managers"
                 managers_group = Group.objects.get(name='Managers')
-                managers_list = managers_group.user_set.all()
+                # --- แก้ไขบรรทัดนี้ ---
+                managers_list = managers_group.user_set.all().prefetch_related('managed_points')
             except Group.DoesNotExist:
-                managers_list = User.objects.none() 
+                managers_list = User.objects.none()
 
     
+    # A2: กรองตามวันที่ (Date Filter)
     today = timezone.now().date()
-    # today.weekday() (จันทร์=0, อังคาร=1, ..., อาทิตย์=6)
-    start_date_default = today - timedelta(days=today.weekday())
-    end_date_default = start_date_default + timedelta(days=6)
+    start_date_default = today - timedelta(days=today.weekday()) # จันทร์
+    end_date_default = start_date_default + timedelta(days=6) # อาทิตย์
     
-    # ใช้ค่า Default (จ-อา) นี้ ถ้า User ไม่ได้เลือก Filter
     end_date_str = request.GET.get('end_date', end_date_default.strftime('%Y-%m-%d'))
     start_date_str = request.GET.get('start_date', start_date_default.strftime('%Y-%m-%d'))
+    
     try:
         start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
         end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
     except (ValueError, TypeError):
-        start_date = (timezone.now() - timedelta(days=6)).date()
-        end_date = timezone.now().date()
+        start_date = start_date_default
+        end_date = end_date_default
         
     end_date_for_query = end_date + timedelta(days=1)
     
     
-    # --- B. สร้าง Queryset หลักที่ "กรองแล้ว" (สำหรับ Bar Chart และ Ticker) ---
-    # ใช้กรองตามสิทธิ์ Manager และช่วงวันที่
+    # --- B. สร้าง Queryset หลักที่ "กรองแล้ว" ---
+    # (ตัวแปรนี้คือตัวแปรที่ถูกต้อง)
     filtered_responses_for_charts_and_ticker = Response.objects.filter(
-        service_point__in=base_service_points, # กรองตามสิทธิ์ Manager
-        submitted_at__gte=start_date,       # กรองตามวันเริ่มต้น
-        submitted_at__lt=end_date_for_query # กรองตามวันสิ้นสุด
+        service_point__in=base_service_points, 
+        submitted_at__gte=start_date,       
+        submitted_at__lt=end_date_for_query 
     )
 
     # --- C. คำนวณข้อมูล (สำหรับ 6 การ์ด) ---
 
-    # Card 1: KPIs (ซ้ายบน - จำนวนแบบสอบถาม, จุดบริการ, คำถาม)
+    # Card 1: KPIs (ซ้ายบน)
     total_active_questions = Question.objects.filter(
         section__survey_version__status='ACTIVE'
     ).distinct().count()
-    # สำหรับ KPI ที่เกี่ยวกับ Response (จะใช้ total_responses ที่กรองตามวัน)
     
-    # Card 2: Service Point List (ขวาบน - จำนวนการประเมินรายจุด)
-    # เราจะให้ Service Point List ใช้ข้อมูล "รวม" (ไม่กรองตามวันที่) เพื่อให้เห็นทุกจุดเสมอ
+    # (เราจะคำนวณ total_responses ทีหลัง)
+
+    # Card 2: Service Point List (ขวาบน)
+    # (ใช้ข้อมูลรวม ไม่กรองตามวัน)
     all_service_points_with_counts = base_service_points.annotate(
-        response_count=Count('response', filter=Q(response__in=Response.objects.filter(service_point__in=base_service_points))) # นับรวมทั้งหมด
+        response_count=Count('response', filter=Q(response__service_point__in=base_service_points))
     ).order_by('-response_count')
 
-
+    
     # Card 3: กราฟแท่งรายสัปดาห์ (ซ้ายกลาง) - ใช้ข้อมูลที่กรองตามวัน
     date_labels = []
     day_counts_dict = {}
     current_date = start_date
     while current_date <= end_date:
-        date_labels.append(current_date.strftime('%a')) # 'Sat', 'Sun', 'Mon', etc.
+        date_labels.append(current_date.strftime('%a')) 
         day_counts_dict[current_date] = 0
         current_date += timedelta(days=1)
 
-    recent_responses_for_bar = filtered_responses_for_charts_and_ticker.annotate(
-        day=TruncDay('submitted_at')
-    ).values('day').annotate(count=Count('id')).order_by('day')
+    # --- (นี่คือส่วนที่แก้ไข) ---
+    # 1. ลบบล็อกโค้ด 'filtered_responses_for_bar = ...' ที่มีปัญหาทิ้งไป
+    
+    # 2. แก้ไขบรรทัดนี้: 
+    #    เปลี่ยนจาก filtered_responses_for_bar 
+    #    เป็น filtered_responses_for_charts_and_ticker
+    response_times = filtered_responses_for_charts_and_ticker.values_list('submitted_at', flat=True)
+    # --- (จบส่วนที่แก้ไข) ---
 
-    for entry in recent_responses_for_bar:
-        if entry['day'].date() in day_counts_dict:
-            day_counts_dict[entry['day'].date()] = entry['count']
+    # 3. วนลูปและแปลงเป็นเวลาท้องถิ่น (Asia/Bangkok) ใน Python
+    for submitted_at_utc in response_times:
+        local_time = timezone.localtime(submitted_at_utc)
+        date_only = local_time.date() 
+        if date_only in day_counts_dict:
+            day_counts_dict[date_only] += 1
     
     bar_data_weekly = [day_counts_dict[day] for day in sorted(day_counts_dict.keys())]
     
-    # KPI Total Responses (อัปเดตตรงนี้ให้ใช้ตัวที่กรองแล้ว สำหรับ Bar Chart)
+    # KPI Total Responses (คำนวณจากข้อมูลที่กรองแล้ว)
     total_responses = filtered_responses_for_charts_and_ticker.count()
 
 
-    # Card 4: Pie Chart (ขวากลาง - สัดส่วนการประเมิน) - ใช้ข้อมูลที่กรองตามวัน
+    # Card 4: Pie Chart (ขวากลาง)
     pie_data_all = base_service_points.annotate(
         response_count=Count('response', filter=Q(response__in=filtered_responses_for_charts_and_ticker))
     ).filter(response_count__gt=0).order_by('-response_count')
@@ -211,11 +223,11 @@ def dashboard_view(request):
     pie_data = [sp.response_count for sp in pie_data_all]
     
     # Card 5: Admin List (ซ้ายล่าง)
-    # managers_list ถูกเตรียมไว้แล้วใน A1
+    # (managers_list ถูกเตรียมไว้แล้วใน A1)
     
-    # Card 6: Ticker (ขวาล่าง - ในรูปว่าง เราจะใช้ข้อเสนอแนะล่าสุด)
+    # Card 6: Ticker (ขวาล่าง)
     recent_feedback = ResponseAnswer.objects.filter(
-        response__in=filtered_responses_for_charts_and_ticker, # ใช้ข้อมูลที่กรองตามวัน
+        response__in=filtered_responses_for_charts_and_ticker, 
         question__question_type='TEXTAREA'
     ).exclude(answer_value__exact='').select_related(
         'response__service_point'
@@ -224,12 +236,12 @@ def dashboard_view(request):
     # --- D. ส่งข้อมูลทั้งหมดไปที่ Template ---
     context = {
         # Card 1 KPIs
-        'total_responses': total_responses, # <-- อัปเดตให้กรองตามวันที่
-        'total_service_points_in_view': base_service_points.count(), # จำนวนจุดที่ตนดูแล
+        'total_responses': total_responses,
+        'total_service_points_in_view': base_service_points.count(),
         'total_active_questions': total_active_questions,
 
         # Card 2 Service Point List
-        'all_service_points_with_counts': all_service_points_with_counts, # ใช้ Queryset ใหม่
+        'all_service_points_with_counts': all_service_points_with_counts,
 
         # Card 3 Bar Chart
         'bar_labels_weekly': json.dumps(date_labels),
@@ -242,8 +254,8 @@ def dashboard_view(request):
         # Card 5 Admin List
         'managers_list': managers_list,
         
-        # Card 6 Ticker (or empty)
-        'recent_feedback': recent_feedback, # หรือส่งข้อมูลว่างถ้าไม่ต้องการ Ticker
+        # Card 6 Ticker
+        'recent_feedback': recent_feedback,
 
         # Filter values
         'start_date': start_date_str,
