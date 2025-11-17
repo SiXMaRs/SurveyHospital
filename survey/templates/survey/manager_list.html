@@ -1,0 +1,153 @@
+{% extends 'index.html' %} 
+{% block title %}ผู้ดูแลจุดบริการ{% endblock %}
+
+{% block content %} 
+<h1 class="text-3xl font-semibold text-gray-800 mb-6">ผู้ดูแลจุดบริการ</h1>
+
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    
+    <div class="bg-white rounded-lg shadow-md p-6 flex flex-col items-center justify-center text-center">
+        <span class="text-3xl text-yellow-500 mb-2">💡</span>
+        <p class="text-sm text-gray-500">ผู้ดูแลทั้งหมด</p>
+        <p class="text-2xl font-bold text-gray-800">{{ total_managers|default:0 }}</p>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-md p-6 flex flex-col items-center justify-center text-center">
+        <span class="text-3xl text-blue-500 mb-2">👥</span>
+        <p class="text-sm text-gray-500">จุดบริการ</p>
+        <p class="text-2xl font-bold text-gray-800">{{ total_service_points|default:0 }}</p>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-md p-6 flex flex-col items-center justify-center text-center">
+        <span class="text-3xl text-pink-500 mb-2">🗓️</span>
+        <p class="text-sm text-gray-500">กลุ่มภารกิจ</p>
+        <p class="text-2xl font-bold text-gray-800">{{ total_service_groups|default:0 }}</p>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-md p-6 flex flex-col items-center justify-center text-center">
+        <span class="text-3xl text-teal-500 mb-2">🟢</span>
+        <p class="text-sm text-gray-500">ออนไลน์</p>
+        <p class="text-2xl font-bold text-gray-800">{{ online_managers|default:0 }}</p>
+    </div>
+</div>
+
+<h2 class="text-2xl font-semibold text-gray-700 ">รายชื่อทั้งหมด</h2>
+<div class="bg-white shadow-md rounded-lg p-6">
+    
+    <div class="border-b border-gray-200 mb-6">
+        <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+            <a href="{% url 'survey:manager_list' %}" 
+               class="{% if request.resolver_match.view_name == 'survey:manager_list' %}border-green-600 text-green-600{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300{% endif %} 
+                      whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                รายชื่อผู้ดูแล (ตาราง)
+            </a>
+            <a href="{% url 'survey:manager_add' %}" 
+               class="{% if request.resolver_match.view_name == 'survey:manager_add' %}border-green-600 text-green-600{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300{% endif %} 
+                      whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                เพิ่มข้อมูลผู้ดูแล
+            </a>
+        </nav>
+    </div>
+
+    <div class="flex justify-between items-center mb-6">
+        <form method="GET" action="{% url 'survey:manager_list' %}" class="flex-grow mr-4">
+            <div class="relative">
+                <input type="text" name="q" value="{{ search_query|default:'' }}"
+                       class="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                       placeholder="ค้นหาชื่อผู้ดูแล...">
+                <button type="submit" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+                    </svg>
+                </button>
+            </div>
+        </form>
+        <button class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg shadow-sm hover:bg-gray-200">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-2" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clip-rule="evenodd" />
+            </svg>
+            ตัวกรอง
+        </button>
+    </div>
+
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ชื่อ</th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">อีเมล</th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">จุดบริการ</th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">กลุ่มภารกิจ</th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">การใช้งานล่าสุด</th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">สถานะ</th>
+                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                {% for manager in managers %}
+                <tr>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm font-medium text-gray-900">{{ manager.get_full_name|default:manager.username }}</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm text-gray-700">{{ manager.email|default:'-' }}</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                        {% for point in manager.managed_points.all %}
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                                {{ point.code }}
+                            </span>
+                        {% empty %}
+                            <span class="text-gray-400">-</span>
+                        {% endfor %}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                        {% if manager.managed_points.all %}
+                            {% for point in manager.managed_points.all|slice:":1" %}
+                                {{ point.group.name|default:'-' }}
+                            {% endfor %}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                        {{ manager.last_login|date:"d M Y, H:i"|default:'ไม่เคยเข้าสู่ระบบ' }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        {% if manager.id in online_user_ids %}
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                ออนไลน์
+                            </span>
+                        {% else %}
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                                ออฟไลน์
+                            </span>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <a href="{% url 'survey:manager_edit' manager.pk %}" class="text-indigo-600 hover:text-indigo-900 mr-4">แก้ไข</a>
+                        <a href="{% url 'survey:manager_delete' manager.pk %}" class="text-red-600 hover:text-red-900" 
+                           onclick="return confirm('คุณแน่ใจหรือไม่ที่จะลบผู้ใช้ {{ manager.username }}?')">
+                           ลบ
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="px-6 py-4 text-center text-gray-500">
+                        ไม่พบข้อมูลผู้ดูแล
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="mt-6 flex justify-end">
+        <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+        </nav>
+    </div>
+
+</div>
+
+{% endblock %}

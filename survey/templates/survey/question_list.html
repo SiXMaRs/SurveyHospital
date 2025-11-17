@@ -1,161 +1,61 @@
 {% extends 'index.html' %}
-{% load static %}
+{% block title %}คำถาม - v{{ version.version_number }}{% endblock %}
 
-{% block title %}จัดการแบบสอบถาม{% endblock %}
+{% block content %}
+<div class="container mx-auto px-4 py-6">
 
-{% block extra_css %}
-<style>
-    .data-table { min-width: 100%; }
-    .data-table thead th {
-        padding: 0.75rem 1.5rem; text-align: left; font-size: 0.75rem; 
-        font-weight: 500; color: #6B7280; text-transform: uppercase;
-        letter-spacing: 0.05em; background-color: #F9FAFB;
-    }
-    .data-table tbody td {
-        padding: 1rem 1.5rem; white-space: nowrap; font-size: 0.875rem;
-    }
-    .data-table tbody tr:nth-child(even) { background-color: #F9FAFB; }
-    .tag {
-        display: inline-flex; padding: 0.25em 0.75em; font-size: 0.75rem;
-        font-weight: 600; line-height: 1.25rem; border-radius: 9999px;
-    }
-</style>
-{% endblock %}
-
-
-{% block main %}
-<div class="w-full mx-auto" x-data="{ activeTab: 'questions' }">
-
-    <div class="flex justify-between items-center mb-6">
-        <h1 class="text-3xl font-bold text-gray-800">จัดการแบบสอบถาม (Admin UI)</h1>
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+        <div>
+            <nav class="text-sm text-gray-500 mb-1">
+                <a href="{% url 'survey:survey_list' %}" class="hover:underline">แบบสอบถาม</a> > 
+                <a href="{% url 'survey:survey_version_list' survey.id %}" class="hover:underline">เวอร์ชัน</a>
+            </nav>
+            <h1 class="text-2xl font-bold text-gray-800">
+                จัดการคำถาม (v{{ version.version_number }})
+            </h1>
+            <p class="text-gray-600 text-sm">{{ survey.title_th }}</p>
+        </div>
+        
+        <a href="{% url 'survey:question_add' version.id %}" 
+           class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+            </svg>
+            เพิ่มคำถาม
+        </a>
     </div>
 
-    <div class="mb-6 border-b border-gray-200">
-        <nav class="flex -mb-px space-x-8" aria-label="Tabs">
-            <button @click="activeTab = 'questions'"
-                    :class="activeTab === 'questions' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
-                    class="py-4 px-1 border-b-2 font-medium text-sm">
-                3. คำถาม (Questions)
-            </button>
+    <div class="space-y-4">
+        {% for question in questions %}
+        <div class="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500 flex justify-between items-center">
+            <div>
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="bg-gray-200 text-gray-700 text-xs px-2 py-0.5 rounded">ลำดับ {{ question.order }}</span>
+                    <span class="text-blue-600 text-xs font-bold uppercase tracking-wide">{{ question.get_question_type_display }}</span>
+                    {% if question.is_required %}
+                        <span class="text-red-500 text-xs">*จำเป็น</span>
+                    {% endif %}
+                </div>
+                <h3 class="text-lg font-semibold text-gray-800">{{ question.text_th }}</h3>
+                {% if question.text_en %}
+                    <p class="text-gray-500 text-sm">{{ question.text_en }}</p>
+                {% endif %}
+            </div>
             
-            <button @click="activeTab = 'versions'"
-                    :class="activeTab === 'versions' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
-                    class="py-4 px-1 border-b-2 font-medium text-sm">
-                2. เวอร์ชัน (Versions)
-            </button>
-            <button @click="activeTab = 'surveys'"
-                    :class="activeTab === 'surveys' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
-                    class="py-4 px-1 border-b-2 font-medium text-sm">
-                1. แบบสอบถาม (Surveys)
-            </button>
-        </nav>
-    </div>
-
-    <div x-show="activeTab === 'questions'" class="bg-white shadow-md rounded-lg overflow-hidden">
-        <div class="p-4 flex justify-between items-center">
-            <h2 class="text-xl font-semibold">รายการคำถามทั้งหมด ({{ all_questions.count }})</h2>
-            <a href="{% url 'survey:question_add' %}" class="px-5 py-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700">+ เพิ่มคำถาม</a>
+            <div class="flex gap-2">
+                <button class="text-gray-400 hover:text-gray-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                       <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                    </svg>
+                </button>
+            </div>
         </div>
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>คำถาม (TH)</th>
-                    <th>เวอร์ชัน (Version)</th> <th>ประเภท</th>
-                    <th>ลำดับ</th>
-                    <th><span class="sr-only">Edit</span></th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-200">
-                {% for q in all_questions %}
-                <tr>
-                    <td>{{ q.text_th|truncatechars:50 }}</td>
-                    <td>
-                        <div>{{ q.survey_version.version_number }}</div>
-                        <div class="text-xs text-gray-400">{{ q.survey_version.survey.title_th }}</div>
-                    </td>
-                    <td><span class="tag bg-green-100 text-green-800">{{ q.get_question_type_display }}</span></td>
-                    <td class="text-center">{{ q.order }}</td>
-                    <td class="text-right">
-                        <a href="{% url 'survey:question_edit' q.pk %}" class="text-indigo-600 hover:text-indigo-900">แก้ไข</a>
-                        <a href="{% url 'survey:question_delete' q.pk %}" class="text-red-600 hover:text-red-900 ml-2">ลบ</a>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr><td colspan="5" class="text-center p-4 text-gray-500">ยังไม่มีคำถาม</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-
-    <div x-show="activeTab === 'versions'" class="bg-white shadow-md rounded-lg overflow-hidden">
-        <div class="p-4 flex justify-between items-center">
-            <h2 class="text-xl font-semibold">รายการเวอร์ชัน ({{ all_versions.count }})</h2>
-            <a href="{% url 'survey:version_add' %}" class="px-5 py-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700">
-                + เพิ่มเวอร์ชัน
-            </a>
+        {% empty %}
+        <div class="text-center py-10 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+            <p class="text-gray-500">ยังไม่มีคำถามในเวอร์ชันนี้</p>
+            <p class="text-sm text-gray-400">กดปุ่ม "เพิ่มคำถาม" ด้านบนเพื่อเริ่มสร้าง</p>
         </div>
-        <table class="data-table">
-             <thead>
-                <tr>
-                    <th>ชื่อเวอร์ชัน</th>
-                    <th>แบบสอบถาม (Survey)</th>
-                    <th>สถานะ</th>
-                    <th><span class="sr-only">Edit</span></th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-200">
-                {% for v in all_versions %}
-                <tr>
-                    <td>{{ v.version_number }}</td>
-                    <td>{{ v.survey.title_th }}</td>
-                    <td>
-                        {% if v.status == 'ACTIVE' %}
-                        <span class="tag bg-green-100 text-green-800">{{ v.get_status_display }}</span>
-                        {% else %}
-                        <span class="tag bg-gray-100 text-gray-800">{{ v.get_status_display }}</span>
-                        {% endif %}
-                    </td>
-                    <td><a href="{% url 'survey:version_edit' v.pk %}" class="text-indigo-600">แก้ไข</a></td>
-                </tr>
-                {% empty %}
-                <tr><td colspan="4" class="text-center p-4 text-gray-500">ยังไม่มีเวอร์ชัน</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        {% endfor %}
     </div>
-
-    <div x-show="activeTab === 'surveys'" class="bg-white shadow-md rounded-lg overflow-hidden">
-        <div class="p-4 flex justify-between items-center">
-            <h2 class="text-xl font-semibold">รายการแบบสอบถามหลัก ({{ all_surveys.count }})</h2>
-            <a href="{% url 'survey:survey_add' %}" class="px-5 py-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700">
-                + เพิ่มแบบสอบถาม
-            </a>
-        </div>
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>ชื่อแบบสอบถาม (TH)</th>
-                    <th>ชื่อ (EN)</th>
-                    <th><span class="sr-only">Edit</span></th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-200">
-                {% for s in all_surveys %}
-                <tr>
-                    <td>{{ s.title_th }}</td>
-                    <td>{{ s.title_en }}</td>
-                    <td><a href="{% url 'survey:survey_edit' s.pk %}" class="text-indigo-600">แก้ไข</a></td>
-                </tr>
-                {% empty %}
-                <tr><td colspan="3" class="text-center p-4 text-gray-500">ยังไม่มีแบบสอบถาม</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-
 </div>
-{% endblock %}
-
-{% block extra_js %}
-<script src="//unpkg.com/alpinejs" defer></script>
 {% endblock %}

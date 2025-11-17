@@ -20,11 +20,16 @@
     </style>
 </head>
 
-<body class="flex flex-col h-screen bg-gray-100 noto"> {% include "elements/navbar.html" %}
+<body class="flex flex-col h-screen bg-gray-100 noto"> 
+    
+    {% include "elements/navbar.html" %}
 
-    <div class="flex flex-row flex-1 overflow-hidden"> {% include 'elements/sidebar.html' %}
+    <div class="flex flex-row flex-1 overflow-hidden"> 
+        
+        {% include 'elements/sidebar.html' %}
 
-        <main class="flex-1 p-6 overflow-y-auto"> {% block main %}
+        <main class="flex-1 p-6 overflow-y-auto"> 
+            {% block content %} 
             {% endblock %}
         </main>
         

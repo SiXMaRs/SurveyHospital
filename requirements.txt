@@ -3,3 +3,5 @@ django
 djangorestframework
 djangorestframework-simplejwt
 openpyxl   
+django_browser_reload
+pyyaml

@@ -1,4 +1,6 @@
-{% extends 'index.html' %} {% block extra_css %}
+{% extends 'index.html' %} 
+
+{% block extra_css %}
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -177,7 +179,7 @@
         .admin-item-grid {
             display: grid;
             /* ให้สร้างคอลัมน์อัตโนมัติ 
-              โดยแต่ละคอลัมน์กว้างอย่างน้อย 180px
+               โดยแต่ละคอลัมน์กว้างอย่างน้อย 180px
             */
             grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
             gap: 20px;
@@ -267,7 +269,10 @@
         
     </style>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>   
-{% endblock %} {% block main %}
+{% endblock %}
+
+{# แก้จาก main เป็น content เพื่อให้ตรงกับ index.html #}
+{% block content %}
     <div class="dashboard-container">
         
         <form class="filter-bar" method="GET">

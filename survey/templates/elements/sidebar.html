@@ -17,9 +17,9 @@
             <span>Dashboard</span>
         </a>
 
-        <a href="{% url 'admin:survey_servicepoint_changelist' %}" 
+        <a href="{% url 'survey:service_point_list' %}" 
            class="flex items-center px-4 py-3 rounded-lg font-medium
-                  {% if '/admin/survey/servicepoint/' in request.path %}
+                  {% if '/service-points/' in request.path or '/service-groups/' in request.path %}
                     bg-blue-100 text-blue-600
                   {% else %}
                     text-white hover:bg-[#27693d] hover:text-white
@@ -30,26 +30,24 @@
             </svg>
             <span>จุดบริการ</span>
         </a>
+        
+        <a href="{% url 'survey:manager_list' %}" 
+              class="flex items-center px-4 py-3 rounded-lg font-medium
+                     {% if '/managers/' in request.path %}
+                       bg-blue-100 text-blue-600
+                     {% else %}
+                       text-white hover:bg-[#27693d] hover:text-white
+                     {% endif %}">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-3" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" /></svg>
+              <span>ผู้ดูแลจุดบริการ</span>
+        </a>
 
-        <a href="{% url 'admin:auth_user_changelist' %}" 
+        <a href="{% url 'survey:survey_list' %}" 
            class="flex items-center px-4 py-3 rounded-lg font-medium
-                  {% if '/admin/auth/user/' in request.path or '/admin/auth/group/' in request.path %}
+                  {% if '/surveys/' in request.path or '/versions/' in request.path %}
                     bg-blue-100 text-blue-600
                   {% else %}
                     text-white hover:bg-[#27693d] hover:text-white
-                  {% endif %}">
-            
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-3" viewBox="0 0 20 20" fill="currentColor">
-              <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" />
-            </svg>
-            <span>ผู้ดูแลจุดบริการ</span>
-        </a>
-
-        <a href="{% url 'survey:survey_management' %}"  class="flex items-center px-4 py-3 rounded-lg font-medium
-                  {% if '/survey/management/' in request.path or '/survey/questions/' in request.path or '/survey/sections/' in request.path %}
-                    bg-blue-100 text-blue-600
-                  {% else %}
-                    text-gray-600 hover:bg-gray-100 hover:text-gray-900
                   {% endif %}">
             
             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-3" viewBox="0 0 20 20" fill="currentColor">

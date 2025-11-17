@@ -1,0 +1,284 @@
+{% extends 'index.html' %} {% block title %}{{ title }}{% endblock %}
+
+{% block content %} <h1 class="text-3xl font-semibold text-gray-800 mb-6">{{ title }}</h1>
+
+{# --- Summary Cards ด้านบน (เหมือนเดิม) --- #}
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    
+    <div class="bg-white rounded-lg shadow-md p-6 flex flex-col items-center justify-center text-center">
+        <span class="text-3xl text-yellow-500 mb-2">💡</span>
+        <p class="text-sm text-gray-500">ผู้ดูแลทั้งหมด</p>
+        <p class="text-2xl font-bold text-gray-800">{{ total_managers|default:0 }}</p>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-md p-6 flex flex-col items-center justify-center text-center">
+        <span class="text-3xl text-blue-500 mb-2">👥</span>
+        <p class="text-sm text-gray-500">จุดบริการ</p>
+        <p class="text-2xl font-bold text-gray-800">{{ total_service_points|default:0 }}</p>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-md p-6 flex flex-col items-center justify-center text-center">
+        <span class="text-3xl text-pink-500 mb-2">🗓️</span>
+        <p class="text-sm text-gray-500">กลุ่มภารกิจ</p>
+        <p class="text-2xl font-bold text-gray-800">{{ total_service_groups|default:0 }}</p>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-md p-6 flex flex-col items-center justify-center text-center">
+        <span class="text-3xl text-teal-500 mb-2">🟢</span>
+        <p class="text-sm text-gray-500">ออนไลน์</p>
+        <p class="text-2xl font-bold text-gray-800">{{ online_managers|default:0 }}</p>
+    </div>
+</div>
+
+<div class="bg-white shadow-md rounded-lg p-6">
+    
+    {# --- Tabs (เหมือนเดิม) --- #}
+    <div class="border-b border-gray-200 mb-6">
+        <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+            <a href="{% url 'survey:manager_list' %}" 
+                class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300
+                        whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                รายชื่อผู้ดูแล
+            </a>
+            <a href="{% url 'survey:manager_add' %}" 
+                class="{% if request.resolver_match.view_name == 'survey:manager_add' %}border-green-600 text-green-600{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300{% endif %} 
+                        whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                เพิ่มข้อมูลผู้ดูแล
+            </a>
+            {% if manager %} 
+            <span class="border-green-600 text-green-600 
+                            whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                แก้ไขข้อมูลผู้ดูแล
+            </span>
+            {% endif %}
+        </nav>
+    </div>
+
+    <form method="POST" action="">
+        {% csrf_token %}
+        
+        {# (🔴 แก้ไข: เพิ่ม Style ให้กล่อง Error หลัก) #}
+        {% if form.non_field_errors %}
+            <div class="p-4 mb-6 bg-red-100 border border-red-400 text-red-700 rounded-md">
+                <p class="font-bold">พบข้อผิดพลาด:</p>
+                {{ form.non_field_errors }}
+            </div>
+        {% endif %}
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-6 ">
+            
+            <div class="space-y-6"> 
+                
+                {# --- (🔴 แก้ไข: ช่อง Username) --- #}
+                <div>
+                    <label for="{{ form.username.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.username.label }}</label>
+                    <input type="text" name="{{ form.username.name }}" id="{{ form.username.id_for_label }}"
+                           value="{{ form.username.value|default:'' }}"
+                           class="mt-1 block w-full px-3 py-2 border {% if form.username.errors %}border-red-500 focus:ring-red-500 focus:border-red-500{% else %}border-gray-300{% endif %} rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm">
+                    {% if form.username.errors %}
+                        <p class="mt-2 text-sm text-red-600">{{ form.username.errors|striptags }}</p>
+                    {% endif %}
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {# --- (🔴 แก้ไข: ช่อง ชื่อจริง) --- #}
+                    <div>
+                        <label for="{{ form.first_name.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.first_name.label }}</label>
+                        <input type="text" name="{{ form.first_name.name }}" id="{{ form.first_name.id_for_label }}"
+                               value="{{ form.first_name.value|default:'' }}"
+                               class="mt-1 block w-full px-3 py-2 border {% if form.first_name.errors %}border-red-500 focus:ring-red-500 focus:border-red-500{% else %}border-gray-300{% endif %} rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm">
+                        {% if form.first_name.errors %}
+                            <p class="mt-2 text-sm text-red-600">{{ form.first_name.errors|striptags }}</p>
+                        {% endif %}
+                    </div>
+                    {# --- (🔴 แก้ไข: ช่อง นามสกุล) --- #}
+                    <div>
+                        <label for="{{ form.last_name.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.last_name.label }}</label>
+                        <input type="text" name="{{ form.last_name.name }}" id="{{ form.last_name.id_for_label }}"
+                               value="{{ form.last_name.value|default:'' }}"
+                               class="mt-1 block w-full px-3 py-2 border {% if form.last_name.errors %}border-red-500 focus:ring-red-500 focus:border-red-500{% else %}border-gray-300{% endif %} rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm">
+                        {% if form.last_name.errors %}
+                            <p class="mt-2 text-sm text-red-600">{{ form.last_name.errors|striptags }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                {# --- (🔴 แก้ไข: ช่อง Email) --- #}
+                <div>
+                    <label for="{{ form.email.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.email.label }}</label>
+                    <input type="email" name="{{ form.email.name }}" id="{{ form.email.id_for_label }}"
+                           value="{{ form.email.value|default:'' }}"
+                           class="mt-1 block w-full px-3 py-2 border {% if form.email.errors %}border-red-500 focus:ring-red-500 focus:border-red-500{% else %}border-gray-300{% endif %} rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm">
+                    {% if form.email.errors %}
+                        <p class="mt-2 text-sm text-red-600">{{ form.email.errors|striptags }}</p>
+                    {% endif %}
+                </div>
+                
+                <div class="border-t pt-4 mt-4">
+                    <h3 class="text-sm font-semibold text-gray-500 mb-3 uppercase tracking-wider">ตั้งค่ารหัสผ่าน</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6"> 
+                        {# --- (🔴 แก้ไข: ช่อง Password) --- #}
+                        <div>
+                            <label for="{{ form.password.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.password.label }}</label>
+                            <input type="password" name="{{ form.password.name }}" id="{{ form.password.id_for_label }}"
+                                   placeholder="{{ form.password.field.widget.attrs.placeholder }}"
+                                   class="mt-1 block w-full px-3 py-2 border {% if form.password.errors %}border-red-500 focus:ring-red-500 focus:border-red-500{% else %}border-gray-300{% endif %} rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm">
+                            {% if form.password.errors %}
+                                <p class="mt-2 text-sm text-red-600">{{ form.password.errors|striptags }}</p>
+                            {% endif %}
+                        </div>
+                        {# --- (🔴 แก้ไข: ช่อง Password2) --- #}
+                        <div>
+                            <label for="{{ form.password2.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.password2.label }}</label>
+                            <input type="password" name="{{ form.password2.name }}" id="{{ form.password2.id_for_label }}"
+                                   placeholder="{{ form.password2.field.widget.attrs.placeholder }}"
+                                   class="mt-1 block w-full px-3 py-2 border {% if form.password2.errors %}border-red-500 focus:ring-red-500 focus:border-red-500{% else %}border-gray-300{% endif %} rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm">
+                            {% if form.password2.errors %}
+                                <p class="mt-2 text-sm text-red-600">{{ form.password2.errors|striptags }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            {# --- (ฝั่งขวา: จุดบริการ - เหมือนเดิม) --- #}
+            <div>
+                <label class="block text-sm font-medium text-gray-700">จุดบริการที่ดูแลอยู่</label>
+                <div id="assigned-points-container" class="mt-2 p-3 border border-gray-200 rounded-md bg-gray-50 min-h-[50px] space-x-1 space-y-1">
+                    {% for point in manager.managed_points.all %}
+                        <span id="assigned-pill-{{ point.id }}" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            {{ point.name }}
+                            <button type="button" class="remove-point-btn text-blue-500 hover:text-blue-700 font-bold" data-point-id="{{ point.id }}">
+                                &times;
+                            </button>
+                        </span>
+                    {% empty %}
+                        <p id="no-assigned-points" class="text-sm text-gray-400 p-2">ยังไม่ได้ดูแลจุดบริการใด</p>
+                    {% endfor %}
+                </div>
+
+                <label class="block text-sm font-medium text-gray-700 mt-4">{{ form.managed_points.label }}</label>
+                
+                <div class="mt-2 mb-3">
+                    <label for="group-filter" class="block text-xs font-medium text-gray-500">กรองตามกลุ่มภารกิจ:</label>
+                    {# (🔴 แก้ไข: เพิ่ม Style ให้ Dropdown) #}
+                    <select id="group-filter" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm">
+                        <option value="all">-- แสดงทั้งหมด --</option>
+                        {% for group in service_groups %}
+                            <option value="{{ group.id }}">{{ group.name }}</option>
+                        {% endfor %}
+                        <option value="none">-- ไม่มีกลุ่ม --</option>
+                    </select>
+                </div>
+                
+                <div id="service-point-list" class="h-80 overflow-y-auto border border-gray-300 rounded-md p-4 space-y-2">
+                    {% for choice in form.managed_points %}
+                    <label class="flex items-center service-point-item" 
+                            data-service-point-id="{{ choice.data.value }}"
+                            style="display:none;">
+                        
+                        {{ choice.tag }} <span class="ml-2 text-sm text-gray-700">{{ choice.choice_label }}</span>
+                    
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+            
+        </div>
+        
+        <div class="flex justify-end space-x-3 mt-8 border-t pt-6">
+            {# (🔴 แก้ไข: เพิ่ม Style ให้ปุ่ม) #}
+            <a href="{% url 'survey:manager_list' %}" class="px-5 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">ยกเลิก</a>
+            <button type="submit" class="px-5 py-2 bg-green-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-green-700">บันทึก</button>
+        </div>
+        
+    </form>
+</div>
+
+{# --- (JavaScript - เหมือนเดิม ไม่ต้องแก้) --- #}
+<script>
+    // (1. รับ JSON map - เหมือนเดิม)
+    const spGroupMap = {{ service_point_group_map|default:"{}"|safe }};
+
+    document.addEventListener('DOMContentLoaded', function() {
+        
+        const groupFilter = document.getElementById('group-filter');
+        const servicePointItems = document.querySelectorAll('.service-point-item'); // (List Checkbox)
+        const assignedContainer = document.getElementById('assigned-points-container');
+        const noAssignedMsg = document.getElementById('no-assigned-points');
+
+        // (2. ฟังก์ชันกรอง Checkbox (ที่ยังไม่ถูกเลือก))
+        function filterPoints() {
+            const selectedGroupId = groupFilter.value; 
+
+            servicePointItems.forEach(function(item) {
+                const checkbox = item.querySelector('input[type="checkbox"]');
+                const servicePointId = checkbox.value;
+                const itemGroupId = spGroupMap[servicePointId] ? String(spGroupMap[servicePointId]) : 'none';
+                
+                // (แก้!) ถ้าถูกติ๊ก (ดูแลอยู่) ให้ซ่อน
+                if (checkbox.checked) {
+                    item.style.display = 'none';
+                    return; // (ไปอันถัดไป)
+                }
+
+                // (เหมือนเดิม) กรองตามกลุ่ม
+                if (selectedGroupId === "" || selectedGroupId === "all") {
+                    item.style.display = 'flex';
+                } else if (selectedGroupId === itemGroupId) {
+                    item.style.display = 'flex';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        }
+
+        // (3. ฟังก์ชันสำหรับปุ่ม [x] (ปุ่มลบ))
+        function handleRemoveClick(pointId) {
+            if (!pointId) return;
+
+            // 1. หาป้าย Tag แล้วลบมัน
+            const pill = document.getElementById('assigned-pill-' + pointId);
+            if (pill) pill.remove();
+
+            // 2. หา Checkbox ที่ซ่อนอยู่ แล้วสั่ง "ติ๊กออก"
+            const checkbox = document.querySelector(`input[name="managed_points"][value="${pointId}"]`);
+            if (checkbox) {
+                checkbox.checked = false;
+            }
+
+            // 3. เรียกใช้ฟังก์ชันกรองอีกครั้ง (เพื่อให้ Checkbox ที่เพิ่งติ๊กออก โผล่กลับมาใน List)
+            filterPoints();
+
+            // 4. ถ้าไม่มีป้ายเหลือ ให้โชว์ข้อความ "ยังไม่ดูแล"
+            if (noAssignedMsg && assignedContainer.querySelectorAll('span').length === 0) {
+                noAssignedMsg.style.display = 'block';
+            }
+        }
+
+        // --- (4. ตอนโหลดหน้าเว็บ) ---
+        
+        // 1. สั่งให้ dropdown เลือก "all" (ตามที่ลูกพี่ขอล่าสุด)
+        groupFilter.value = 'all'; 
+        
+        // 2. สั่งให้ฟังก์ชันกรองทำงาน (มันจะซ่อนอันที่ติ๊กไว้ และโชว์อันที่เหลือ)
+        filterPoints();
+
+        // 3. สั่งให้ฟังก์ชันกรองทำงานใหม่ ทุกครั้งที่เปลี่ยน Dropdown
+        groupFilter.addEventListener('input', filterPoints);
+        
+        // 4. สั่งให้ปุ่ม [x] (ที่ดึงจาก View) ทำงาน
+        assignedContainer.querySelectorAll('.remove-point-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault(); // (กันฟอร์มส่ง)
+                handleRemoveClick(e.target.dataset.pointId);
+            });
+        });
+
+        // 5. ซ่อนข้อความ "ยังไม่ดูแล" ถ้ามีป้าย Tag อยู่
+        if (noAssignedMsg && assignedContainer.querySelectorAll('span').length > 0) {
+            noAssignedMsg.style.display = 'none';
+        }
+    });
+</script>
+{% endblock %}

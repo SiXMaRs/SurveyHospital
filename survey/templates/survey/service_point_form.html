@@ -1,0 +1,69 @@
+{% extends 'index.html' %}
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<h1 class="text-3xl font-semibold text-gray-800 mb-6">{{ title }}</h1>
+
+<div class="bg-white shadow-md rounded-lg p-6">
+    
+    <form method="POST" action="">
+        {% csrf_token %}
+        
+        {% if form.errors %}
+            <div class_alias="p-4 mb-6 bg-red-100 border border-red-400 text-red-700 rounded-md">
+                <p class="font-bold">พบข้อผิดพลาด:</p>
+                {{ form.errors }}
+            </div>
+        {% endif %}
+
+        <div class="space-y-6">
+            
+            {# --- Name --- #}
+            <div>
+                <label for="{{ form.name.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.name.label }}</label>
+                <input type="text" name="{{ form.name.name }}" id="{{ form.name.id_for_label }}"
+                       value="{{ form.name.value|default:'' }}"
+                       placeholder="{{ form.name.field.widget.attrs.placeholder }}"
+                       class="mt-1 block w-full px-3 py-2 border {% if form.name.errors %}border-red-500{% else %}border-gray-300{% endif %} rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm">
+                {% if form.name.errors %}<p class="mt-2 text-sm text-red-600">{{ form.name.errors|striptags }}</p>{% endif %}
+            </div>
+
+            {# --- Code --- #}
+            <div>
+                <label for="{{ form.code.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.code.label }}</label>
+                <input type="text" name="{{ form.code.name }}" id="{{ form.code.id_for_label }}"
+                       value="{{ form.code.value|default:'' }}"
+                       placeholder="{{ form.code.field.widget.attrs.placeholder }}"
+                       class="mt-1 block w-full px-3 py-2 border {% if form.code.errors %}border-red-500{% else %}border-gray-300{% endif %} rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm">
+                {% if form.code.errors %}<p class="mt-2 text-sm text-red-600">{{ form.code.errors|striptags }}</p>{% endif %}
+            </div>
+
+            {# --- Group --- #}
+            <div>
+                <label for="{{ form.group.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.group.label }}</label>
+                {{ form.group }} {% if form.group.errors %}<p class="mt-2 text-sm text-red-600">{{ form.group.errors|striptags }}</p>{% endif %}
+            </div>
+
+            {# --- Managers --- #}
+            <div>
+                <label class="block text-sm font-medium text-gray-700">{{ form.managers.label }}</label>
+                <div class="mt-2 h-60 overflow-y-auto border border-gray-300 rounded-md p-4 space-y-2">
+                    {% for choice in form.managers %}
+                    <label class="flex items-center">
+                        {{ choice.tag }} <span class="ml-2 text-sm text-gray-700">{{ choice.choice_label }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+                {% if form.managers.errors %}<p class="mt-2 text-sm text-red-600">{{ form.managers.errors|striptags }}</p>{% endif %}
+            </div>
+
+        </div>
+
+        <div class="flex justify-end space-x-3 mt-8 border-t pt-6">
+            <a href="{% url 'survey:service_point_list' %}" class="px-5 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">ยกเลิก</a>
+            <button type="submit" class="px-5 py-2 bg-green-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-green-700">บันทึก</button>
+        </div>
+        
+    </form>
+</div>
+{% endblock %}

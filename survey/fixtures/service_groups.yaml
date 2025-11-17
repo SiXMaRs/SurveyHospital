@@ -1,0 +1,24 @@
+- model: survey.servicegroup
+  pk: 1
+  fields:
+    name: ภารกิจด้านบริการตติยภูมิและจิตเวช
+- model: survey.servicegroup
+  pk: 2
+  fields:
+    name: ภารกิจด้านการพยาบาล
+- model: survey.servicegroup
+  pk: 3
+  fields:
+    name: ภารกิจด้านบริการปฐมภูมิ
+- model: survey.servicegroup
+  pk: 4
+  fields:
+    name: ภารกิจด้านอำนวยการ
+- model: survey.servicegroup
+  pk: 5
+  fields:
+    name: ภารกิจด้านพัฒนาระบบบริการและสนับสนุนบริการสุขภาพ
+- model: survey.servicegroup
+  pk: 6
+  fields:
+    name: ภารกิจสุขภาพดิจิทัล
