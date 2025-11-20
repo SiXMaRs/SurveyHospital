@@ -1,0 +1,42 @@
+{% extends 'index.html' %}
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<h1 class="text-3xl font-semibold text-gray-800 mb-6">{{ title }}</h1>
+
+<div class="bg-white shadow-md rounded-lg p-6 max-w-2xl mx-auto">
+    
+    <form method="POST" action="">
+        {% csrf_token %}
+        
+        {% if form.errors %}
+            <div class="p-4 mb-6 bg-red-100 border border-red-400 text-red-700 rounded-md">
+                <p class="font-bold">พบข้อผิดพลาด:</p>
+                {{ form.errors }}
+            </div>
+        {% endif %}
+
+        <div class="space-y-6">
+            
+            {# --- Name --- #}
+            <div>
+                <label for="{{ form.name.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.name.label }}</label>
+                <input type="text" name="{{ form.name.name }}" id="{{ form.name.id_for_label }}"
+                       value="{{ form.name.value|default:'' }}"
+                       placeholder="{{ form.name.field.widget.attrs.placeholder }}"
+                       class="mt-1 block w-full px-3 py-2 border {% if form.name.errors %}border-red-500{% else %}border-gray-300{% endif %} rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm">
+                {% if form.name.errors %}<p class="mt-2 text-sm text-red-600">{{ form.name.errors|striptags }}</p>{% endif %}
+            </div>
+
+        </div>
+
+        <div class="flex justify-end space-x-3 mt-8 border-t pt-6">
+            
+            <a href="{% url 'survey:service_point_list' %}" class="px-5 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">ยกเลิก</a>
+            
+            <button type="submit" class="px-5 py-2 bg-green-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-green-700">บันทึก</button>
+        </div>
+        
+    </form>
+</div>
+{% endblock %}

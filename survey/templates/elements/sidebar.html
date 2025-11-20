@@ -1,0 +1,73 @@
+{% load static %}
+
+<aside class="w-64 h-full bg-[#6BB16B] shadow-lg flex flex-col flex-shrink-0">
+    <nav class="flex-1 px-4 py-4 space-y-2">
+        
+        <a href="{% url 'survey:dashboard' %}" 
+           class="flex items-center px-4 py-3 rounded-lg font-medium
+                  {% if request.path == '/survey/dashboard/' %}
+                    bg-blue-100 text-blue-600
+                  {% else %}
+                    text-white hover:bg-[#27693d] hover:text-white
+                  {% endif %}">
+            
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-3" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
+            </svg>
+            <span>Dashboard</span>
+        </a>
+
+        <a href="{% url 'survey:service_point_list' %}" 
+           class="flex items-center px-4 py-3 rounded-lg font-medium
+                  {% if '/service-points/' in request.path or '/service-groups/' in request.path %}
+                    bg-blue-100 text-blue-600
+                  {% else %}
+                    text-white hover:bg-[#27693d] hover:text-white
+                  {% endif %}">
+            
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-3" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" />
+            </svg>
+            <span>จุดบริการ</span>
+        </a>
+        
+        <a href="{% url 'survey:manager_list' %}" 
+              class="flex items-center px-4 py-3 rounded-lg font-medium
+                     {% if '/managers/' in request.path %}
+                       bg-blue-100 text-blue-600
+                     {% else %}
+                       text-white hover:bg-[#27693d] hover:text-white
+                     {% endif %}">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-3" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" /></svg>
+              <span>ผู้ดูแลจุดบริการ</span>
+        </a>
+
+        <a href="{% url 'survey:survey_list' %}" 
+           class="flex items-center px-4 py-3 rounded-lg font-medium
+                  {% if '/surveys/' in request.path or '/versions/' in request.path %}
+                    bg-blue-100 text-blue-600
+                  {% else %}
+                    text-white hover:bg-[#27693d] hover:text-white
+                  {% endif %}">
+            
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-3" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M9 2a1 1 0 00-1 1v1a1 1 0 001 1h2a1 1 0 001-1V3a1 1 0 00-1-1H9z" />
+              <path fill-rule="evenodd" d="M4 5a2 2 0 012-2h8a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h6a1 1 0 100-2H7zm0 4a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd" />
+            </svg>
+            <span class="font-medium">แบบสอบถาม</span>
+        </a>
+        <a href="{% url 'survey:assessment_results' %}" 
+           class="flex items-center px-4 py-3 rounded-lg font-medium
+                  {% if '/admin/survey/response/' in request.path %}
+                    bg-blue-100 text-blue-600
+                  {% else %}
+                    text-white hover:bg-[#27693d] hover:text-white
+                  {% endif %}">
+            
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-3" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M3 3a1 1 0 000 2v8a1 1 0 001 1h12a1 1 0 100-2H5V5a1 1 0 00-2 0V3zm12 1a1 1 0 011 1v10a1 1 0 01-1 1h-2a1 1 0 01-1-1V5a1 1 0 011-1h2zm-4 4a1 1 0 011 1v6a1 1 0 01-1 1H7a1 1 0 01-1-1V9a1 1 0 011-1h2z" clip-rule="evenodd" />
+            </svg>
+            <span class="font-medium">ผลการประเมิน</span>
+        </a>
+    </nav>
+</aside>

@@ -1,0 +1,313 @@
+{% extends 'index.html' %}
+{% load static %}
+
+{% block title %}ผลการประเมิน{% endblock %}
+
+{% block content %}
+<div class="p-8 bg-[#f3f4f6] min-h-screen font-sarabun">
+    
+    <!-- Header -->
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+        <h1 class="text-2xl font-bold text-gray-700">ผลการประเมิน</h1>
+        
+        <!-- Date Filter Form -->
+        <form method="GET" id="filterForm" class="bg-white p-2 rounded-lg shadow-sm border border-gray-300 flex flex-wrap items-center gap-3">
+            
+            <!-- เก็บค่า Filter อื่นๆ ไว้ใน Hidden เพื่อให้กด "กรองข้อมูล" ทีเดียวแล้วไปหมด -->
+            <input type="hidden" name="group_id" id="hidden_group_id" value="{{ selected_group }}">
+            <input type="hidden" name="point_id" id="hidden_point_id" value="{{ selected_point }}">
+            <input type="hidden" name="score" id="hidden_score" value="{{ selected_score }}">
+            
+            <div class="flex items-center gap-2">
+                <span class="text-sm font-bold text-gray-600 whitespace-nowrap">วันเริ่มต้น:</span>
+                <input type="date" name="start_date" value="{{ start_date }}" class="border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500 p-1.5 text-gray-600 cursor-pointer">
+            </div>
+            
+            <div class="flex items-center gap-2">
+                <span class="text-sm font-bold text-gray-600 whitespace-nowrap">วันสิ้นสุด:</span>
+                <input type="date" name="end_date" value="{{ end_date }}" class="border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500 p-1.5 text-gray-600 cursor-pointer">
+            </div>
+            
+            <button type="submit" class="bg-[#007bff] hover:bg-blue-600 text-white font-bold py-1.5 px-4 rounded-md transition text-sm shadow-sm whitespace-nowrap">
+                กรองข้อมูล
+            </button>
+        </form>
+    </div>
+
+    <div class="flex flex-col lg:flex-row gap-8">
+        
+        <!-- Left Column (Main Content) -->
+        <div class="w-full lg:w-3/4 space-y-8">
+            
+            <!-- Stats Cards (เหมือนเดิม) -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="rounded-2xl overflow-hidden shadow-lg bg-gradient-to-b from-[#4285F4] to-[#2b6cb0] text-white relative h-48 flex flex-col justify-center items-center">
+                     <div class="absolute top-0 left-0 w-full h-12 bg-white/10 flex items-center justify-center backdrop-blur-sm border-b border-white/10">
+                        <span class="font-semibold text-lg tracking-wide">การประเมิน</span>
+                    </div>
+                    <div class="mt-8 text-center">
+                        <span class="text-6xl font-bold drop-shadow-md">{{ total_assessments }}</span>
+                    </div>
+                </div>
+                <div class="rounded-2xl overflow-hidden shadow-lg bg-gradient-to-b from-[#4F46E5] to-[#3730a3] text-white relative h-48 flex flex-col justify-center items-center">
+                    <div class="absolute top-0 left-0 w-full h-12 bg-white/10 flex items-center justify-center backdrop-blur-sm border-b border-white/10">
+                        <span class="font-semibold text-lg tracking-wide">ข้อเสนอแนะ</span>
+                    </div>
+                    <div class="mt-8 text-center">
+                        <span class="text-6xl font-bold drop-shadow-md">{{ total_suggestions }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filter Section (Main Filters) -->
+            <div>
+                <h3 class="text-xl font-bold text-gray-700 mb-4">กรองข้อมูล</h3>
+                
+                <!-- ฟอร์มนี้แยกจากวันที่ด้านบน แต่เราจะใช้ JS เชื่อมค่ากันตอน Submit ถ้าต้องการ -->
+                <!-- ในที่นี้ใช้ GET parameter ร่วมกันได้ -->
+                <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    
+                    <!-- Group Filter -->
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-600 mb-2">กลุ่มภารกิจ</label>
+                        <div class="relative">
+                             <select id="group_filter" onchange="syncAndSubmit()" class="block w-full pl-3 pr-10 py-2.5 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md appearance-none bg-gray-50 text-gray-500">
+                                <option value="">เลือกกลุ่มภารกิจ</option>
+                                {% for g in groups %}
+                                    <option value="{{ g.id }}" {% if selected_group == g.id %}selected{% endif %}>{{ g.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Point Filter (Dependent) -->
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-600 mb-2">จุดบริการ</label>
+                        <div class="relative">
+                            <select id="point_filter" onchange="syncAndSubmit()" class="block w-full pl-3 pr-10 py-2.5 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md appearance-none bg-gray-50 text-gray-500 disabled:bg-gray-200 disabled:text-gray-400">
+                                <option value="">กรุณาเลือกกลุ่มภารกิจก่อน</option>
+                                <!-- Options จะถูกเติมด้วย JS -->
+                            </select>
+                             <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Score Filter (Range) -->
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-600 mb-2">ช่วงคะแนน</label>
+                        <div class="relative">
+                            <select id="score_filter" onchange="syncAndSubmit()" class="block w-full pl-3 pr-10 py-2.5 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md appearance-none bg-gray-50 text-gray-500">
+                                <option value="">ทั้งหมด</option>
+                                <option value="4-5" {% if selected_score == "4-5" %}selected{% endif %}>4 - 5 คะแนน (ดีมาก)</option>
+                                <option value="3-4" {% if selected_score == "3-4" %}selected{% endif %}>3 - 4 คะแนน (ดี)</option>
+                                <option value="2-3" {% if selected_score == "2-3" %}selected{% endif %}>2 - 3 คะแนน (พอใช้)</option>
+                                <option value="1-2" {% if selected_score == "1-2" %}selected{% endif %}>1 - 2 คะแนน (ปรับปรุง)</option>
+                            </select>
+                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Reset Button -->
+                    <div class="md:col-span-2 lg:col-span-3 flex justify-end">
+                         <a href="{% url 'survey:assessment_results' %}" class="text-gray-500 hover:text-gray-700 ml-4 text-sm underline self-center cursor-pointer">ล้างค่าทั้งหมด</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Table Section (เหมือนเดิม) -->
+            <div>
+                <h3 class="text-xl font-bold text-gray-700 mb-4">รายการการประเมิน</h3>
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="text-[#4285F4] text-sm font-semibold border-b border-gray-100 bg-white">
+                                    <th class="p-4 pl-6">ชื่อ</th>
+                                    <th class="p-4">คะแนน</th>
+                                    <th class="p-4">จุดบริการ</th>
+                                    <th class="p-4">กลุ่มภารกิจ</th>
+                                    <th class="p-4">เวลา</th>
+                                    <th class="p-4 text-center"></th>
+                                </tr>
+                            </thead>
+                            <tbody class="text-sm text-gray-600 divide-y divide-gray-50">
+                                {% for resp in page_obj %}
+                                <tr class="hover:bg-gray-50 transition">
+                                    <td class="p-4 pl-6 font-medium text-gray-800">{{ resp.user_role|default:"ผู้เยี่ยมชม" }}</td>
+                                    <td class="p-4 font-bold text-orange-500">
+                                        {% if resp.avg_score %}{{ resp.avg_score|floatformat:1 }} <span class="text-xs text-gray-400">★</span>{% else %}<span class="text-gray-300">-</span>{% endif %}
+                                    </td>
+                                    <td class="p-4">{{ resp.service_point.name }}</td>
+                                    <td class="p-4 text-gray-500">{{ resp.service_point.group.name }}</td>
+                                    <td class="p-4 whitespace-nowrap text-gray-500">{{ resp.submitted_at|date:"d M, H:i น." }}</td>
+                                    <td class="p-4 text-center space-x-4 whitespace-nowrap">
+                                        <button onclick="openDetailModal('response-{{ resp.id }}')" class="text-[#4285F4] hover:underline text-sm bg-transparent border-none cursor-pointer">ดู</button>
+                                        <div id="response-{{ resp.id }}" class="hidden">
+                                            <div class="flex justify-between items-start mb-4 border-b pb-2">
+                                                <div>
+                                                    <h4 class="font-bold text-lg text-gray-800">รายละเอียดการประเมิน</h4>
+                                                    <p class="text-sm text-gray-500">{{ resp.service_point.name }} ({{ resp.user_role }})</p>
+                                                </div>
+                                                <div class="text-right">
+                                                    <p class="text-sm text-gray-400">{{ resp.submitted_at|date:"d M Y, H:i" }}</p>
+                                                    <p class="text-xs text-gray-400">Ref ID: #{{ resp.id }}</p>
+                                                </div>
+                                            </div>
+                                            <div class="space-y-4">
+                                                {% for ans in resp.answers.all %}
+                                                <div class="bg-gray-50 p-3 rounded-lg">
+                                                    <p class="text-sm text-gray-500 mb-1">ข้อ {{ forloop.counter }}: {{ ans.question.text_th }}</p>
+                                                    {% if ans.question.question_type == 'RATING_5' %}
+                                                        <div class="flex items-center gap-1">
+                                                            {% with ''|center:ans.answer_rating as range %}
+                                                            {% for _ in range %}
+                                                                <i class="fas fa-star text-yellow-400"></i>
+                                                            {% endfor %}
+                                                            {% endwith %}
+                                                            <span class="ml-2 text-sm font-bold text-gray-700">{{ ans.answer_rating }}/5</span>
+                                                        </div>
+                                                    {% else %}
+                                                        <p class="text-sm text-gray-800 italic break-words">"{{ ans.answer_text }}"</p>
+                                                    {% endif %}
+                                                </div>
+                                                {% empty %}
+                                                    <p class="text-gray-400 text-center">ไม่มีข้อมูลคำตอบ</p>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% if page_obj.has_other_pages %}
+                <div class="flex justify-end mt-4 gap-2 text-sm font-medium">
+                    {% for num in page_obj.paginator.page_range %}
+                        {% if page_obj.number == num %}
+                            <span class="bg-[#3333ff] text-white py-2 px-4 rounded-md shadow-sm cursor-default">{{ num }}</span>
+                        {% else %}
+                            <a href="?page={{ num }}&start_date={{ start_date }}&end_date={{ end_date }}&group_id={{ selected_group }}&point_id={{ selected_point }}&score={{ selected_score }}" class="text-[#3333ff] py-2 px-4 hover:bg-blue-50 rounded-md transition">{{ num }}</a>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Right Column (Suggestions - เหมือนเดิม) -->
+        <div class="w-full lg:w-1/4">
+             <h3 class="text-xl font-bold text-[#3f4254] mb-4">รายการข้อเสนอแนะ</h3>
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 h-full max-h-[800px] flex flex-col overflow-hidden">
+                <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-white sticky top-0 z-10">
+                    <span class="text-[#4285F4] font-semibold text-sm">ข้อเสนอ</span>
+                    <div class="flex gap-8 text-[#4285F4] font-semibold text-sm pr-4"><span>ผู้กรอก</span><span>จุดบริการ</span></div>
+                </div>
+                <div class="overflow-y-auto flex-1 custom-scrollbar">
+                    {% for answer in recent_suggestions %}
+                    <div class="p-4 hover:bg-gray-50 border-b border-gray-50 transition cursor-pointer group">
+                        <div class="flex justify-between items-start">
+                            <div class="w-1/2 pr-2">
+                                <p class="text-xs text-gray-800 font-medium line-clamp-2 mb-1">{{ answer.answer_text }}</p>
+                            </div>
+                            <div class="w-1/2 flex justify-between text-[10px] text-gray-500">
+                                <span class="truncate w-20 text-right">{{ answer.response.user_role|default:"User" }}</span>
+                                <span class="truncate w-16 text-right text-gray-400">{{ answer.response.service_point.code }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="p-8 text-center text-gray-400 text-sm flex flex-col items-center justify-center h-full">ไม่มีข้อเสนอแนะ</div>
+                    {% endfor %}
+                </div>
+                <div class="p-3 border-t border-gray-100 text-center bg-gray-50">
+                    <a href="{% url 'survey:suggestion_list' %}?start_date={{ start_date }}&end_date={{ end_date }}&group_id={{ selected_group }}&point_id={{ selected_point }}&score={{ selected_score }}" class="text-xs text-[#4285F4] font-medium hover:underline">ดูทั้งหมด</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Container -->
+<div id="infoModal" class="fixed inset-0 z-50 hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div class="flex items-center justify-center min-h-screen px-4 text-center sm:p-0">
+        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity backdrop-blur-sm" onclick="closeInfoModal()"></div>
+        <div class="relative bg-white rounded-xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:max-w-lg w-full p-6 max-h-[80vh] flex flex-col">
+            <div id="infoModalContent" class="overflow-y-auto pr-2"></div>
+            <div class="mt-5 pt-4 border-t border-gray-100 flex justify-end">
+                <button type="button" onclick="closeInfoModal()" class="inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none sm:text-sm">ปิด</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e0; border-radius: 2px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #a0aec0; }
+    .font-sarabun { font-family: 'Sarabun', sans-serif; }
+</style>
+
+<script>
+    // === Modal Logic ===
+    function openDetailModal(contentId) {
+        const content = document.getElementById(contentId).innerHTML;
+        document.getElementById('infoModalContent').innerHTML = content;
+        document.getElementById('infoModal').classList.remove('hidden');
+    }
+    function closeInfoModal() {
+        document.getElementById('infoModal').classList.add('hidden');
+    }
+
+    // === Dependent Dropdown Logic ===
+    const pointMap = {{ point_map_json|safe }};
+    const groupFilter = document.getElementById('group_filter');
+    const pointFilter = document.getElementById('point_filter');
+    const selectedPointId = "{{ selected_point }}";
+
+    function updatePointDropdown() {
+        const groupId = groupFilter.value;
+        pointFilter.innerHTML = ''; // Clear old options
+
+        if (groupId && pointMap[groupId]) {
+            pointFilter.disabled = false;
+            pointFilter.innerHTML = '<option value="">-- เลือกจุดบริการ --</option>';
+            
+            pointMap[groupId].forEach(point => {
+                const option = document.createElement('option');
+                option.value = point.id;
+                option.textContent = point.name;
+                if (point.id == selectedPointId) option.selected = true;
+                pointFilter.appendChild(option);
+            });
+        } else {
+            pointFilter.disabled = true;
+            pointFilter.innerHTML = '<option value="">กรุณาเลือกกลุ่มภารกิจก่อน</option>';
+        }
+    }
+
+    // === Sync Form Logic ===
+    // เมื่อเลือก Dropdown ให้เอาค่าไปใส่ใน Hidden Input ของฟอร์มวันที่ แล้ว Submit Form วันที่แทน
+    function syncAndSubmit() {
+        document.getElementById('hidden_group_id').value = document.getElementById('group_filter').value;
+        document.getElementById('hidden_point_id').value = document.getElementById('point_filter').value;
+        document.getElementById('hidden_score').value = document.getElementById('score_filter').value;
+        
+        document.getElementById('filterForm').submit();
+    }
+    
+    // Initialize
+    document.addEventListener('DOMContentLoaded', function() { 
+        updatePointDropdown(); 
+    });
+</script>
+{% endblock %}

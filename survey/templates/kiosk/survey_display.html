@@ -1,0 +1,252 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ประเมินความพึงพอใจ - {{ service_point.name }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        body { font-family: 'Sarabun', sans-serif; }
+
+        /* --- 1. Header Styles (ของคุณ) --- */
+        .header {
+            width: 100%;
+            padding: 10px 30px 10px 0; 
+            display: flex; 
+            align-items: center; 
+            background-color: #006837;
+            color: white;
+            box-sizing: border-box;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 50;
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: center;
+        }
+
+        .header-logo { 
+            height: 80px;   
+            width: auto;    
+            margin-left: 40px; 
+            margin-right: 15px; 
+            object-fit: contain;
+        }
+
+        .settings-container {
+            position: relative;
+            margin-left: auto;
+        }
+
+        .settings-icon svg { 
+            height: 30px; width: 30px; fill: white; display: block; cursor: pointer;
+        }
+        /* ------------------------------- */
+        
+        /* Star Rating Styles */
+        .rating-group {
+            display: inline-flex;
+            flex-direction: row-reverse;
+            justify-content: center;
+        }
+        .rating-group input { display: none; }
+        .rating-group label {
+            cursor: pointer;
+            color: #d1d5db;
+            font-size: 3rem; /* ขนาดกำลังดี */
+            padding: 0 8px;
+            transition: color 0.2s, transform 0.2s;
+        }
+        
+        .rating-group input:checked ~ label,
+        .rating-group label:hover,
+        .rating-group label:hover ~ label {
+            color: #fbbf24;
+        }
+        
+        .rating-group input:checked + label {
+            transform: scale(1.1);
+        }
+
+        /* Transitions */
+        .question-step {
+            display: none;
+            animation: fadeIn 0.4s ease-in-out;
+        }
+        .question-step.active {
+            display: block;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-[#ecfdf5] min-h-screen flex flex-col">
+
+    <!-- Header (Original Code) -->
+    <div class="header">
+        <div class="header-content">
+            <img src="{% static 'images/logo.png' %}" alt="Logo" class="header-logo">
+        </div>
+        <div class="settings-container">
+            <a class="settings-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 0 24 24" width="24">
+                    <path d="M0 0h24v24H0V0z" fill="none"/>
+                    <path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.22-.08-.49 0-.61.22l-2 3.46c-.12.22-.07.49.12.64l2.11 1.65c-.04.32-.07.64-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.22.08.49 0 .61.22l2 3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5-3.5-1.57 3.5-3.5 3.5z"/>
+                </svg>
+            </a>
+        </div>
+    </div>
+
+    <!-- Content (Padding Top 120px เพื่อหลบ Header) -->
+    <div class="flex-grow flex flex-col items-center justify-start w-full max-w-3xl mx-auto px-4 pb-10" style="padding-top: 120px;">
+        
+        <!-- Back & Title -->
+        <div class="w-full flex items-center gap-3 mb-6 px-2">
+            <a href="{% url 'survey:kiosk_user_info' service_point.id %}" class="text-gray-600 hover:text-gray-900 transition">
+                <i class="fas fa-arrow-left text-xl"></i>
+            </a>
+            <h2 class="text-2xl font-bold text-gray-700">ประเมินความพึงพอใจ</h2>
+        </div>
+
+        {% if survey %}
+        <form id="surveyForm" action="{% url 'survey:survey_submit' survey.id %}" method="POST" class="w-full relative">
+            {% csrf_token %}
+            <input type="hidden" name="service_point_id" value="{{ service_point.id }}">
+
+            <!-- Loop คำถาม -->
+            {% for question in survey.questions.all %}
+            <div class="question-step w-full {% if forloop.first %}active{% endif %}" data-index="{{ forloop.counter0 }}" data-required="{{ question.is_required|yesno:'true,false' }}">
+                
+                <!-- Card Container (ขนาดกำลังดี max-w-2xl) -->
+                <div class="bg-white rounded-2xl shadow-lg p-8 text-center relative flex flex-col justify-center items-center mx-auto border border-green-100 w-full">
+                    
+                    <!-- Question Text -->
+                    <h3 class="text-2xl md:text-3xl font-bold text-gray-700 mb-8 leading-relaxed">
+                        {{ question.text_th }}
+                    </h3>
+
+                    <!-- Inputs -->
+                    {% if question.question_type == 'RATING_5' %}
+                        <div class="rating-group">
+                            <input type="radio" id="q{{ question.id }}_5" name="q-{{ question.id }}" value="5">
+                            <label for="q{{ question.id }}_5"><i class="fas fa-star"></i></label>
+                            <input type="radio" id="q{{ question.id }}_4" name="q-{{ question.id }}" value="4">
+                            <label for="q{{ question.id }}_4"><i class="fas fa-star"></i></label>
+                            <input type="radio" id="q{{ question.id }}_3" name="q-{{ question.id }}" value="3">
+                            <label for="q{{ question.id }}_3"><i class="fas fa-star"></i></label>
+                            <input type="radio" id="q{{ question.id }}_2" name="q-{{ question.id }}" value="2">
+                            <label for="q{{ question.id }}_2"><i class="fas fa-star"></i></label>
+                            <input type="radio" id="q{{ question.id }}_1" name="q-{{ question.id }}" value="1">
+                            <label for="q{{ question.id }}_1"><i class="fas fa-star"></i></label>
+                        </div>
+                    {% elif question.question_type == 'TEXTAREA' %}
+                        <textarea name="q-{{ question.id }}" rows="4" 
+                            class="w-full p-4 text-lg border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition outline-none resize-none"
+                            placeholder="พิมพ์ข้อเสนอแนะของท่านที่นี่..."></textarea>
+                    {% endif %}
+
+                </div>
+            </div>
+            {% empty %}
+            <div class="text-center text-gray-500 text-lg py-10">ไม่มีคำถามในแบบสอบถามนี้</div>
+            {% endfor %}
+
+            <!-- Next Button (แปะขอบขวาของการ์ด) -->
+            <div class="absolute top-1/2 -translate-y-1/2 -right-4 md:-right-8 z-20">
+                <button type="button" id="nextBtn" onclick="nextQuestion()" 
+                    class="bg-[#3bc14a] hover:bg-green-600 text-white w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition transform hover:scale-110 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ring-4 ring-[#ecfdf5]">
+                    <i class="fas fa-arrow-right text-xl"></i>
+                </button>
+            </div>
+
+        </form>
+
+        <!-- Question Counter -->
+        <div class="mt-6 text-center">
+            <p class="text-lg text-gray-500 font-medium">
+                ข้อที่: <span id="currentNumber">1</span> / {{ survey.questions.count }}
+            </p>
+        </div>
+
+        {% else %}
+        <div class="text-center mt-20">
+            <h2 class="text-xl text-red-600">ไม่พบข้อมูลแบบสอบถาม</h2>
+        </div>
+        {% endif %}
+
+    </div>
+
+    <!-- Legend (Footer) -->
+    <footer class="bg-white py-3 px-4 border-t border-gray-100 shrink-0 mt-auto shadow-inner">
+        <h4 class="text-sm font-bold text-gray-600 mb-2 text-center">เกณฑ์คะแนน</h4>
+        <div class="flex justify-center gap-x-4 gap-y-2 flex-wrap max-w-3xl mx-auto">
+            <div class="flex items-center gap-1"><i class="fas fa-star text-yellow-400 text-sm"></i><span class="text-gray-500 text-xs">น้อยมาก</span></div>
+            <div class="flex items-center gap-1"><div class="flex text-yellow-400 text-sm"><i class="fas fa-star"></i><i class="fas fa-star"></i></div><span class="text-gray-500 text-xs">น้อย</span></div>
+            <div class="flex items-center gap-1"><div class="flex text-yellow-400 text-sm"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i></div><span class="text-gray-500 text-xs">ปานกลาง</span></div>
+            <div class="flex items-center gap-1"><div class="flex text-yellow-400 text-sm"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i></div><span class="text-gray-500 text-xs">ดี</span></div>
+            <div class="flex items-center gap-1"><div class="flex text-yellow-400 text-sm"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i></div><span class="text-gray-500 text-xs">ดีมาก</span></div>
+        </div>
+    </footer>
+
+    <script>
+        let currentIndex = 0;
+        const questions = document.querySelectorAll('.question-step');
+        const totalQuestions = questions.length;
+        const nextBtn = document.getElementById('nextBtn');
+        const form = document.getElementById('surveyForm');
+        const currentNumDisplay = document.getElementById('currentNumber');
+
+        function updateDisplay() {
+            questions.forEach((q, index) => {
+                q.classList.remove('active');
+                if (index === currentIndex) {
+                    q.classList.add('active');
+                }
+            });
+            if(currentNumDisplay) currentNumDisplay.innerText = currentIndex + 1;
+            
+            if (currentIndex === totalQuestions - 1) {
+                nextBtn.innerHTML = '<i class="fas fa-check text-xl"></i>';
+                nextBtn.classList.replace('bg-[#3bc14a]', 'bg-green-700');
+            } else {
+                nextBtn.innerHTML = '<i class="fas fa-arrow-right text-xl"></i>';
+                nextBtn.classList.replace('bg-green-700', 'bg-[#3bc14a]');
+            }
+        }
+
+        function nextQuestion() {
+            const currentQ = questions[currentIndex];
+            const isRequired = currentQ.dataset.required === 'true';
+            const radios = currentQ.querySelectorAll('input[type="radio"]');
+            const textareas = currentQ.querySelectorAll('textarea');
+            let answered = false;
+
+            if (radios.length > 0) {
+                for (const r of radios) { if (r.checked) answered = true; }
+                if (isRequired && !answered) { alert('กรุณาให้คะแนนก่อนไปข้อถัดไป'); return; }
+            } else if (textareas.length > 0) {
+                if (isRequired && textareas[0].value.trim() === '') { alert('กรุณากรอกความคิดเห็น'); return; }
+            }
+
+            if (currentIndex < totalQuestions - 1) {
+                currentIndex++;
+                updateDisplay();
+            } else {
+                form.submit();
+            }
+        }
+        
+        if (totalQuestions > 0) updateDisplay();
+    </script>
+</body>
+</html>

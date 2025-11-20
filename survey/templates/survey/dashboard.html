@@ -1,0 +1,446 @@
+{% extends 'index.html' %} 
+
+{% block extra_css %}
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f0f2f5;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+        }
+        .dashboard-container {
+            max-width: 1800px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 2fr 1fr; /* คอลัมน์ซ้าย 2 ส่วน, ขวา 1 ส่วน */
+            gap: 20px;
+        }
+
+        /* Card Base Style */
+        .card {
+            background: #fff;
+            border-radius: 12px; /* เพิ่มความโค้งมนเล็กน้อย */
+            padding: 25px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08); /* เงาที่ดูนุ่มนวลกว่า */
+            display: flex;
+            flex-direction: column;
+            overflow: hidden; /* ซ่อนส่วนที่ล้น */
+        }
+        .card h2 {
+            margin-top: 0;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+            color: #111;
+            text-align: center;
+        }
+        .card-content {
+            flex-grow: 1; /* ขยายให้เต็มพื้นที่ที่เหลือ */
+            overflow-y: auto; /* <-- ตัวนี้คือที่สั่งให้เลื่อน */
+            overflow-x: hidden;
+            
+            /* (Optional) ทำให้แถบเลื่อนสวยงาม */
+            scrollbar-width: thin;
+            scrollbar-color: #ccc #f0f0f0;
+        }
+
+        /* 2. Class "การ์ด" (ต้องมี height คงที่) */
+        .service-point-list-card {
+            grid-column: 2;
+            grid-row: 2;
+            height: 250px; /* <-- ตัวนี้คือที่บังคับความสูง */
+        }
+
+        /* Specific Card Styles */
+        .filter-bar {
+            grid-column: 1 / -1; /* กว้างเต็ม 2 คอลัมน์ */
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            justify-content: flex-start; /* ชิดซ้าย */
+            padding: 15px 25px;
+            margin-bottom: 10px; /* ลดระยะห่าง */
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        .filter-bar label { font-weight: 600; color: #555; }
+        .filter-bar input[type="date"] {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 1em;
+            color: #333;
+        }
+        .filter-bar button {
+            background: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 600;
+            transition: background-color 0.2s ease;
+        }
+        .filter-bar button:hover { background-color: #0056b3; }
+
+        /* --- 1. Top-Left Card (KPIs) --- */
+        .kpi-card-wrapper {
+            grid-column: 1;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr); /* 3 การ์ดย่อยใน 1 การ์ดใหญ่ */
+            gap: 20px;
+            padding: 25px;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            height: 250px; /* สูงเท่ากับรูป */
+        }
+        .kpi-item {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #6a05f7, #8d38f7); /* สีม่วงน้ำเงิน */
+            color: white;
+            border-radius: 10px;
+            text-align: center;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            transition: transform 0.2s ease;
+        }
+        .kpi-item:hover { transform: translateY(-5px); }
+        .kpi-item h3 { margin: 0; font-size: 1.1em; opacity: 0.8; }
+        .kpi-item .number { font-size: 3em; font-weight: bold; margin-top: 10px; }
+        
+        /* --- 2. Top-Right Card (Service Point List) --- */
+        .service-point-list-card {
+            grid-column: 2;
+            height: 250px; /* สูงเท่ากับรูป */
+        }
+        .service-point-list-card h2 { text-align: left; margin-bottom: 15px; }
+        .service-point-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .service-point-item:last-child { border-bottom: none; }
+        .service-point-item .icon {
+            width: 30px; height: 30px;
+            border-radius: 50%;
+            background: #e9f5ff; /* สีฟ้าอ่อน */
+            color: #007bff;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.9em;
+            margin-right: 10px;
+        }
+        .service-point-item .name-date { flex-grow: 1; }
+        .service-point-item .name-date strong { display: block; font-size: 1.1em; color: #555; }
+        .service-point-item .name-date small { color: #888; font-size: 0.85em; }
+        .service-point-item .count { font-size: 1.3em; font-weight: bold; color: #28a745; }
+
+
+        /* --- 3. Middle-Left Card (Bar Chart) --- */
+        .bar-chart-card {
+            grid-column: 1;
+            height: 400px; /* สูงเท่ากับรูป */
+        }
+        .bar-chart-card h2 { text-align: left; }
+        .bar-chart-card canvas { width: 100% !important; height: 100% !important; }
+
+        /* --- 4. Middle-Right Card (Pie Chart) --- */
+        .pie-chart-card {
+            grid-column: 2;
+            height: 400px; /* สูงเท่ากับรูป */
+        }
+        .pie-chart-card h2 { text-align: left; }
+        .pie-chart-card .chart-container {
+            flex-grow: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .pie-chart-card canvas { max-width: 90%; max-height: 90%; }
+        
+        /* --- 5. Bottom-Left Card (Admin List) --- */
+        .admin-list-card {
+            grid-column: 1;
+            height: 300px; /* (ความสูงเท่าเดิม) */
+        }
+        .admin-list-card h2 { text-align: left; margin-bottom: 15px; }
+
+        /* --- (นี่คือส่วนที่แก้ไข) --- */
+        
+        /* 1. เปลี่ยนเป็น Grid (เพื่อให้ตัดบรรทัด) */
+        .admin-item-grid {
+            display: grid;
+            /* ให้สร้างคอลัมน์อัตโนมัติ 
+               โดยแต่ละคอลัมน์กว้างอย่างน้อย 180px
+            */
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 20px;
+        }
+        
+        /* 2. Style ของการ์ดแต่ละใบ */
+        .admin-item {
+            display: flex;
+            flex-direction: column; /* 1. จัดเรียง (รูป, ชื่อ) แนวตั้ง */
+            align-items: center;   /* 2. จัดทุกอย่างไว้ตรงกลาง */
+            text-align: center;    /* 3. จัดข้อความตรงกลาง */
+            
+            background: #f9f9f9;
+            border-radius: 10px;
+            padding: 20px 15px; /* (เพิ่ม padding บน-ล่าง) */
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+            transition: transform 0.2s ease;
+            word-wrap: break-word; /* 4. (สำคัญ) สั่งให้ตัดคำ */
+        }
+        .admin-item:hover { transform: translateY(-3px); }
+
+        .admin-item img {
+            width: 60px; height: 60px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-bottom: 15px; /* (เพิ่มระยะห่าง) */
+            border: 3px solid #007bff;
+        }
+        .admin-item strong {
+            display: block;
+            font-size: 1.1em;
+            color: #333;
+            line-height: 1.3; /* (ให้สูงพอดี) */
+        }
+        .admin-item small { 
+            color: #777; 
+            font-size: 0.85em; 
+            display: block; 
+            margin-top: 3px; 
+        }
+        .admin-item .managed-points {
+            font-size: 0.9em;
+            color: #555; /* (เปลี่ยนสีเทา) */
+            margin-top: 8px;
+            display: block;
+            line-height: 1.4;
+        }
+
+        /* --- 6. Bottom-Right Card (ข้อเสนอแนะล่าสุด - Ticker) --- */
+        .ticker-card {
+            grid-column: 2;
+            height: 300px; 
+        }
+        .ticker-card h2 { text-align: left; margin-bottom: 15px; }
+
+        /* --- (นี่คือส่วนที่แก้ไข) --- */
+        .feedback-item {
+            display: block; /* 1. สั่งให้แสดงตลอด */
+            padding: 12px 0;
+            border-bottom: 1px dashed #eee; /* 2. (Optional) เพิ่มเส้นคั่น */
+        }
+        .feedback-item:last-child {
+            border-bottom: none; /* (ไม่แสดงเส้นคั่นที่อันสุดท้าย) */
+        }
+
+        .filter-bar .export-button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 600;
+            text-decoration: none;
+            transition: background-color 0.2s ease;
+        }
+        .filter-bar .csv {
+            background-color: #28a745; /* สีเขียว */
+            color: white;
+        }
+        .filter-bar .excel {
+            background-color: #1d6f42; /* สีเขียวเข้ม (Excel) */
+            color: white;
+        }
+        .filter-bar .export-button:hover {
+            opacity: 0.8;
+        }
+        
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>   
+{% endblock %}
+
+{# แก้จาก main เป็น content เพื่อให้ตรงกับ index.html #}
+{% block content %}
+    <div class="dashboard-container">
+        
+        <form class="filter-bar" method="GET">
+            <label for="start_date">วันเริ่มต้น:</label>
+            <input type="date" id="start_date" name="start_date" value="{{ start_date }}">
+            <label for="end_date">วันสิ้นสุด:</label>
+            <input type="date" id="end_date" name="end_date" value="{{ end_date }}">
+            <button type="submit">กรองข้อมูล</button>
+            <a href="{% url 'survey:export_csv' %}?start_date={{ start_date }}&end_date={{ end_date }}" 
+               class="export-button csv">
+                Export CSV
+            </a>
+            
+            <a href="{% url 'survey:export_excel' %}?start_date={{ start_date }}&end_date={{ end_date }}" 
+               class="export-button excel">
+                Export Excel
+            </a>
+            
+        </form>
+
+        <div class="kpi-card-wrapper">
+            <div class="kpi-item">
+                <h3>จำนวนการตอบ</h3>
+                <div class="number">{{ total_responses }}</div>
+            </div>
+            <div class="kpi-item">
+                <h3>จำนวนจุดบริการ</h3>
+                <div class="number">{{ total_service_points_in_view }}</div>
+            </div>
+            <div class="kpi-item">
+                <h3>จำนวนคำถาม (Active)</h3>
+                <div class="number">{{ total_active_questions }}</div>
+            </div>
+        </div>
+
+        <div class="card service-point-list-card">
+            <h2>จำนวนการประเมิน</h2>
+            <div class="card-content">
+                {% for sp in all_service_points_with_counts %}
+                <div class="service-point-item">
+                    <span class="icon">P</span> {# Placeholder icon #}
+                    <div class="name-date">
+                        <strong>{{ sp.name }}</strong>
+                        <small>ข้อมูลรวม</small> {# หรือใช้ submitted_at ล่าสุดถ้ามี #}
+                    </div>
+                    <span class="count">{{ sp.response_count }}</span>
+                </div>
+                {% empty %}
+                <p>ยังไม่มีข้อมูลการตอบ</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="card bar-chart-card">
+            <h2>จำนวนการประเมินต่อสัปดาห์</h2>
+            <div class="card-content">
+                <canvas id="barChartWeekly"></canvas>
+            </div>
+        </div>
+
+        <div class="card pie-chart-card">
+            <h2>การประเมินแต่ละจุดบริการ</h2>
+            <div class="card-content chart-container">
+                <canvas id="pieChart"></canvas>
+            </div>
+        </div>
+
+            <div class="card admin-list-card">
+            <h2>ผู้ดูแลแต่ละจุดบริการ</h2>
+            <div class="card-content admin-item-grid">
+                {% for manager in managers_list %}
+                <div class="admin-item">
+                    <img src="https://api.dicebear.com/7.x/adventurer/svg?seed={{ manager.username }}&backgroundColor=b6e3f4,c0aede,d1d4f9" alt="Profile of {{ manager.username }}">
+                    
+                    <strong>{{ manager.get_full_name|default:manager.username }}</strong>
+
+                    <small class="managed-points">
+                        {% for sp in manager.managed_points.all %}
+                            {{ sp.name }}
+                            {% if not forloop.last %}, {% endif %}
+                        {% empty %}
+                            (ยังไม่ได้รับมอบหมาย)
+                        {% endfor %}
+                    </small>
+                </div>
+                {% empty %}
+                <p style="text-align: center;">ไม่พบข้อมูลผู้ดูแล</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="card ticker-card">
+            <h2>ข้อเสนอแนะล่าสุด</h2>
+            <div class="card-content" id="feedback-ticker">
+                {% for feedback in recent_feedback %}
+                <div class="feedback-item">
+                    <p>"{{ feedback.answer_value|truncatewords:20 }}"</p>
+                    <span>จาก: <strong>{{ feedback.response.service_point.name }}</strong> ({{ feedback.response.submitted_at|date:"d M Y, H:i" }})</span>
+                </div>
+                {% empty %}
+                <p style="text-align: center;">ยังไม่มีข้อเสนอแนะในช่วงวันที่นี้</p>
+                {% endfor %}
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- กราฟแท่งรายสัปดาห์ (Bar Chart) ---
+        const barCtx = document.getElementById('barChartWeekly').getContext('2d');
+        new Chart(barCtx, {
+            type: 'bar',
+            data: {
+                labels: {{ bar_labels_weekly|safe }},
+                datasets: [{
+                    label: 'จำนวนการประเมิน',
+                    data: {{ bar_data_weekly|safe }},
+                    backgroundColor: 'rgba(0, 123, 255, 0.6)',
+                    borderColor: 'rgba(0, 123, 255, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        grid: { display: false }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: '#eee' }
+                    }
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { mode: 'index', intersect: false }
+                }
+            }
+        });
+
+        // --- Pie Chart (สัดส่วน) ---
+        const pieCtx = document.getElementById('pieChart').getContext('2d');
+        new Chart(pieCtx, {
+            type: 'doughnut',
+            data: {
+                labels: {{ pie_labels|safe }},
+                datasets: [{
+                    data: {{ pie_data|safe }},
+                    backgroundColor: [
+                        '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'
+                    ],
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            padding: 20
+                        }
+                    },
+                    tooltip: { mode: 'index', intersect: false }
+                }
+            }
+        });
+    </script>
+{% endblock %}

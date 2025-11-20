@@ -1,0 +1,167 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>แบบสอบถามความพึงพอใจ - รพ.ตระการพืชผล</title>
+    
+    <style>
+        body {
+            font-family: 'Tahoma', sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background-color: #fcfcfc;
+            color: #333;
+            overflow-x: hidden; 
+        }
+        
+        /* --- ส่วน Header --- */
+        .header {
+            width: 100%;
+            padding: 10px 30px 10px 0; 
+            display: flex; 
+            align-items: center; 
+            background-color: #006837;
+            color: white;
+            box-sizing: border-box;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: center;
+        }
+
+        .header-logo { 
+            height: 80px;   
+            width: auto;    
+            margin-left: 40px; 
+            margin-right: 15px; 
+            object-fit: contain;
+        }
+
+        .header-text h5 { margin: 0; font-weight: bold; }
+        .header-text p { margin: 0; font-size: 0.8em; }
+
+        /* --- 1. (แก้ไข) ส่วนของปุ่มตั้งค่า --- */
+        .settings-container {
+            position: relative; /* (สำคัญ) ทำให้ปุ่ม Login ลอยเทียบกับตรงนี้ */
+            margin-left: auto;
+        }
+
+        .settings-icon { 
+            cursor: pointer; /* (สำคัญ) ทำให้ดูเหมือนกดได้ */
+        }
+        
+        .settings-icon svg { 
+            height: 30px;
+            width: 30px;
+            fill: white;
+            display: block; /* (ปรับเล็กน้อย) */
+        }
+
+        /* --- 2. (เพิ่มใหม่) สไตล์ของปุ่ม Login ที่ซ่อนอยู่ --- */
+        .login-dropdown {
+            display: none; /* (สำคัญ) ซ่อนปุ่มไว้ก่อน */
+            position: absolute;
+            top: 100%; /* ให้อยู่ใต้ไอคอน */
+            right: 0; /* ให้อยู่ขวา */
+            margin-top: 10px; /* ระยะห่าง */
+            background-color: white;
+            color: #006837; /* สีตัวอักษร */
+            padding: 10px 20px;
+            border-radius: 5px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        /* (สำคัญ) คลาส .show ที่ JavaScript จะเพิ่มเข้ามา */
+        .login-dropdown.show {
+            display: block; /* เปลี่ยนเป็น "โชว์" */
+        }
+        /* --- (จบส่วน Header) --- */
+
+        .container {
+            text-align: center;
+            padding-top: 120px; 
+        }
+        h1 {
+            font-size: 2.5em;
+            color: #006837;
+            font-weight: 600;
+            margin-bottom: 30px;
+        }
+        .start-button {
+            background-color: #006837;
+            color: white;
+            border: none;
+            padding: 18px 45px;
+            font-size: 1.2em;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            text-decoration: none;
+            transition: background-color 0.3s;
+        }
+        .start-button:hover {
+            background-color: #004a27;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        
+        <div class="header-content">
+            <img src="{% static 'images/logo.png' %}" alt="Logo" class="header-logo">
+        </div>
+        
+        <div class="settings-container">
+            <a class="settings-icon" id="settings-toggle" aria-label="Settings">
+                <svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 0 24 24" width="24">
+                    <path d="M0 0h24v24H0V0z" fill="none"/>
+                    <path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.22-.08-.49 0-.61.22l-2 3.46c-.12.22-.07.49.12.64l2.11 1.65c-.04.32-.07.64-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.22.08.49 0 .61.22l2 3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"/>
+                </svg>
+            </a>
+            
+            <a href="/login/" class="login-dropdown" id="login-dropdown">Login</a>
+        </div>
+        
+    </div>
+
+    <div class="container">
+        <h1>แบบสอบถามประเมินความพึงพอใจ<br>การบริการ</h1>
+        
+        <a href="#" class="start-button">
+            เริ่มทำแบบสอบถาม
+        </a>
+    </div>
+
+    <script>
+        const settingsToggle = document.getElementById('settings-toggle');
+        const loginDropdown = document.getElementById('login-dropdown');
+        // 2. เมื่อ "คลิก" ที่เฟือง
+        settingsToggle.addEventListener('click', function(event) {
+            event.preventDefault(); 
+            loginDropdown.classList.toggle('show');
+        });
+        // 3. (Optional) ถ้าคลิกที่อื่นบนจอ ให้ซ่อนปุ่ม Login
+        window.addEventListener('click', function(event) {
+            if (!settingsToggle.contains(event.target)) {
+                if (loginDropdown.classList.contains('show')) {
+                    loginDropdown.classList.remove('show');
+                }
+            }
+        });
+    </script>
+
+</body>
+</html>

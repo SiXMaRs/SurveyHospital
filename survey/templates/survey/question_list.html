@@ -1,0 +1,207 @@
+{% extends 'index.html' %}
+{% block title %}คำถาม - v{{ survey.version_number }}{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6">
+
+    <!-- Header Section -->
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+        <div>
+            <nav class="text-sm text-gray-500 mb-1">
+                <a href="{% url 'survey:survey_list' %}" class="hover:underline">แบบสอบถาม</a> > 
+                <span class="text-gray-800">จัดการคำถาม</span>
+            </nav>
+            <h1 class="text-2xl font-bold text-gray-800">
+                จัดการคำถาม (v{{ survey.version_number }})
+            </h1>
+            <p class="text-gray-600 text-sm">{{ survey.title_th }}</p>
+        </div>
+        
+        <button onclick="openAddModal()" 
+           class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow flex items-center transition duration-150 ease-in-out transform hover:scale-105">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+            </svg>
+            เพิ่มคำถาม
+        </button>
+    </div>
+
+    <!-- Table Section -->
+    <div class="bg-white shadow-md rounded-lg overflow-hidden mb-10">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ลำดับ</th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">คำถาม (TH)</th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ประเภท</th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">บังคับ</th>
+                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                {% for question in questions %}
+                <tr>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ question.order }}</td>
+                    <td class="px-6 py-4">
+                        <div class="text-sm font-medium text-gray-900">{{ question.text_th }}</div>
+                        {% if question.text_en %}
+                        <div class="text-sm text-gray-500">{{ question.text_en }}</div>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ question.get_question_type_display }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {% if question.is_required %}
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">ใช่</span>
+                        {% else %}
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">ไม่</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <!-- ปุ่มแก้ไข (เก็บข้อมูลไว้ใน data attributes) -->
+                        <button type="button" 
+                                onclick="openEditModal(this)"
+                                data-url="{% url 'survey:question_edit' question.id %}"
+                                data-order="{{ question.order }}"
+                                data-text-th="{{ question.text_th }}"
+                                data-text-en="{{ question.text_en|default:'' }}"
+                                data-type="{{ question.question_type }}"
+                                data-required="{{ question.is_required|yesno:'true,false' }}"
+                                class="text-indigo-600 hover:text-indigo-900 mr-3 cursor-pointer">
+                            แก้ไข
+                        </button>
+                        
+                        <a href="{% url 'survey:question_delete' question.id %}" class="text-red-600 hover:text-red-900">ลบ</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="px-6 py-4 text-center text-gray-500">ยังไม่มีคำถามในแบบสอบถามนี้</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- ================= MODAL (ADD / EDIT) ================= -->
+    <div id="questionModal" class="fixed inset-0 z-50 overflow-y-auto hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onclick="closeModal()"></div>
+
+            <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full">
+                <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                    <div class="sm:flex sm:items-start">
+                        <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+                            <h3 class="text-lg leading-6 font-medium text-gray-900" id="modalTitle">เพิ่มคำถามใหม่</h3>
+                            
+                            <form method="POST" id="questionForm" class="mt-4 space-y-4">
+                                {% csrf_token %}
+                                {{ form.survey }}
+
+                                <!-- Order -->
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">ลำดับ</label>
+                                    <input type="number" name="{{ form.order.name }}" id="id_order" value="{{ form.order.value|default:'' }}" class="mt-1 block w-20 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm px-3 py-2 border">
+                                </div>
+
+                                <!-- TH -->
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">คำถาม (ไทย)</label>
+                                    <textarea name="{{ form.text_th.name }}" id="id_text_th" rows="2" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm px-3 py-2 border">{{ form.text_th.value|default:'' }}</textarea>
+                                </div>
+
+                                <!-- EN -->
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">คำถาม (อังกฤษ)</label>
+                                    <textarea name="{{ form.text_en.name }}" id="id_text_en" rows="2" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm px-3 py-2 border">{{ form.text_en.value|default:'' }}</textarea>
+                                </div>
+
+                                <!-- Type -->
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">ประเภทคำถาม</label>
+                                    <div class="space-y-2">
+                                        {% for radio in form.question_type %}
+                                        <div class="flex items-center">
+                                            {{ radio.tag }}
+                                            <label for="{{ radio.id_for_label }}" class="ml-2 text-sm text-gray-700">{{ radio.choice_label }}</label>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+
+                                <!-- Required -->
+                                <div class="flex items-center">
+                                    <input type="checkbox" name="{{ form.is_required.name }}" id="id_is_required" {% if form.is_required.value %}checked{% endif %} class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                                    <label for="id_is_required" class="ml-2 block text-sm text-gray-900">ผู้ใช้จำเป็นต้องตอบข้อนี้</label>
+                                </div>
+                                
+                                {% if form.non_field_errors %}
+                                    <div class="text-red-500 text-sm">{{ form.non_field_errors }}</div>
+                                {% endif %}
+
+                                <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse -mx-6 -mb-6 mt-4">
+                                    <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-base font-medium text-white hover:bg-green-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm">
+                                        บันทึก
+                                    </button>
+                                    <button type="button" onclick="closeModal()" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                                        ยกเลิก
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    const modal = document.getElementById('questionModal');
+    const modalTitle = document.getElementById('modalTitle');
+    const form = document.getElementById('questionForm');
+    
+    // Inputs
+    const orderInput = document.getElementById('id_order');
+    const textThInput = document.getElementById('id_text_th');
+    const textEnInput = document.getElementById('id_text_en');
+    const isRequiredInput = document.getElementById('id_is_required');
+
+    function openAddModal() {
+        modalTitle.innerText = "เพิ่มคำถามใหม่";
+        form.reset();
+        form.action = ""; // Post to current URL (Create View logic in List View)
+        modal.classList.remove('hidden');
+    }
+
+    function openEditModal(btn) {
+        modalTitle.innerText = "แก้ไขคำถาม";
+        
+        // Populate Form
+        orderInput.value = btn.dataset.order;
+        textThInput.value = btn.dataset.textTh;
+        textEnInput.value = btn.dataset.textEn;
+        isRequiredInput.checked = (btn.dataset.required === 'true');
+        
+        // Set Radio Button
+        const typeValue = btn.dataset.type;
+        const radios = document.getElementsByName('{{ form.question_type.name }}');
+        for (const r of radios) {
+            if (r.value === typeValue) r.checked = true;
+        }
+
+        // Set Action URL
+        form.action = btn.dataset.url;
+        
+        modal.classList.remove('hidden');
+    }
+
+    function closeModal() {
+        modal.classList.add('hidden');
+    }
+
+    {% if show_modal %}
+        openModal(); // Re-open if validation error occurs
+    {% endif %}
+</script>
+{% endblock %}

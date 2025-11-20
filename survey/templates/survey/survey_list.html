@@ -1,0 +1,295 @@
+{% extends 'index.html' %}
+{% load static %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    
+    <!-- Header & Add Button -->
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold text-gray-800">{{ page_title }}</h1>
+        <button onclick="openAddModal()" class="bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700 flex items-center transition transform hover:scale-105">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+            </svg>
+            เพิ่มแบบสอบถามใหม่
+        </button>
+    </div>
+
+    <!-- Survey Table -->
+    <div class="bg-white shadow-md rounded-lg overflow-hidden mb-10">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-100">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ชื่อแบบสอบถาม (TH)</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">จุดบริการ</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">กลุ่มภารกิจ</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">สถานะ</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">คำถาม</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                {% for survey in surveys %}
+                <tr class="hover:bg-gray-50 transition">
+                    <td class="px-6 py-4">
+                        <div class="font-medium text-gray-900">{{ survey.title_th }}</div>
+                        <div class="text-xs text-gray-500">v{{ survey.version_number }}</div>
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-700">
+                        {{ survey.service_point.id}}.{{ survey.service_point.name|default:"(ไม่ระบุ)" }}
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-500">
+                        {{ survey.service_point.group.name|default:"-" }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        {% if survey.status == 'ACTIVE' %}
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">ใช้งานจริง</span>
+                        {% else %}
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">ฉบับร่าง</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-700">
+                        {{ survey.question_count }} ข้อ
+                    </td>
+                    <td class="px-6 py-4 text-right text-sm font-medium space-x-2">
+                        <a href="{% url 'survey:question_list' survey.id %}" class="text-indigo-600 hover:text-indigo-900">จัดการคำถาม</a>
+                        
+                        <!-- ปุ่มแก้ไข (เปลี่ยนเป็น Button เพื่อเรียก JS Popup) -->
+                        <button type="button" 
+                                onclick="openEditModal(this)"
+                                data-url="{% url 'survey:survey_edit' survey.pk %}"
+                                data-title-th="{{ survey.title_th }}"
+                                data-title-en="{{ survey.title_en|default:'' }}"
+                                data-description="{{ survey.description|default:'' }}"
+                                data-group-id="{{ survey.service_point.group.id|default:'' }}"
+                                data-point-id="{{ survey.service_point.id|default:'' }}"
+                                data-version="{{ survey.version_number }}"
+                                data-status="{{ survey.status }}"
+                                class="text-blue-600 hover:text-blue-900 cursor-pointer">
+                            แก้ไข
+                        </button>
+
+                        <a href="{% url 'survey:survey_delete' survey.pk %}" class="text-red-600 hover:text-red-900 ml-2">ลบ</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="px-6 py-10 text-center text-gray-500">
+                        ยังไม่มีแบบสอบถามในระบบ
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- ================= MODAL (รวม Add/Edit) ================= -->
+    <div id="surveyModal" class="fixed inset-0 z-50 overflow-y-auto hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onclick="closeModal()"></div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+            <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl w-full">
+                <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                    
+                    <div class="mt-3 text-center sm:mt-0 sm:text-left w-full">
+                        <h3 class="text-xl leading-6 font-bold text-gray-900 border-b pb-2 mb-4" id="modalTitle">
+                            <!-- Title จะเปลี่ยนตามโหมด (เพิ่ม/แก้ไข) -->
+                        </h3>
+                        
+                        <form method="POST" id="surveyForm" class="space-y-4">
+                            {% csrf_token %}
+
+                            <!-- TH Title -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">ชื่อแบบสอบถาม (TH)</label>
+                                <input type="text" name="{{ form.title_th.name }}" id="id_title_th" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
+                            </div>
+
+                            <!-- EN Title -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">ชื่อแบบสอบถาม (EN)</label>
+                                <input type="text" name="{{ form.title_en.name }}" id="id_title_en" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                            </div>
+
+                            <!-- Description -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">คำอธิบาย</label>
+                                <textarea name="{{ form.description.name }}" id="id_description" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <!-- Service Group -->
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ form.service_group.label }}</label>
+                                    {{ form.service_group }}
+                                </div>
+                                
+                                <!-- Service Point -->
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                                         {{ form.service_point.label }}
+                                    </label>
+                                    {{ form.service_point }} 
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                                <!-- Version -->
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">เวอร์ชัน</label>
+                                    <input type="text" id="id_version_display" disabled class="w-full bg-gray-100 px-3 py-2 border border-gray-300 rounded-md text-gray-500">
+                                </div>
+
+                                <!-- Status -->
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ form.status.label }}</label>
+                                    {{ form.status }}
+                                </div>
+                            </div>
+
+                            <!-- Error Display -->
+                            {% if form.errors %}
+                                <div class="bg-red-50 p-3 rounded-md border border-red-200 text-red-600 text-sm mt-2">
+                                    <p class="font-bold">เกิดข้อผิดพลาด:</p>
+                                    {{ form.errors }}
+                                </div>
+                            {% endif %}
+
+                            <!-- Buttons -->
+                            <div class="mt-6 flex justify-end space-x-3">
+                                <button type="button" onclick="closeModal()" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300">
+                                    ยกเลิก
+                                </button>
+                                <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 shadow">
+                                    บันทึกข้อมูล
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // Elements
+    const modal = document.getElementById('surveyModal');
+    const modalTitle = document.getElementById('modalTitle');
+    const surveyForm = document.getElementById('surveyForm');
+    
+    // Form Fields
+    const titleThInput = document.getElementById('id_title_th');
+    const titleEnInput = document.getElementById('id_title_en');
+    const descInput = document.getElementById('id_description');
+    const groupFilter = document.getElementById('id_group_filter');
+    const pointSelect = document.getElementById('id_service_point');
+    const statusSelect = document.getElementById('id_status'); // Django ปกติจะตั้ง id_status ให้
+    const versionDisplay = document.getElementById('id_version_display');
+
+    const pointMap = {{ point_map_json|safe }};
+    
+    // Tailwind Styles
+    const tailwindClass = "block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm disabled:bg-gray-100 disabled:text-gray-400";
+    if(groupFilter) groupFilter.className = tailwindClass;
+    if(pointSelect) pointSelect.className = tailwindClass;
+    if(statusSelect) statusSelect.className = tailwindClass;
+
+    // --- Modal Control ---
+
+    function openAddModal() {
+        // 1. Reset Form for "Add"
+        surveyForm.reset();
+        surveyForm.action = ""; // Post ไป URL ปัจจุบัน (Create)
+        modalTitle.innerText = "เพิ่มแบบสอบถามใหม่";
+        
+        // 2. Set Default Values
+        versionDisplay.value = "1.0";
+        if(statusSelect) statusSelect.value = "DRAFT";
+
+        // 3. Reset Dropdown
+        updatePointDropdown(""); 
+
+        modal.classList.remove('hidden');
+    }
+
+    function openEditModal(btn) {
+        // 1. Get Data from Button
+        const url = btn.dataset.url;
+        const titleTh = btn.dataset.titleTh;
+        const titleEn = btn.dataset.titleEn;
+        const desc = btn.dataset.description;
+        const groupId = btn.dataset.groupId;
+        const pointId = btn.dataset.pointId;
+        const version = btn.dataset.version;
+        const status = btn.dataset.status;
+
+        // 2. Fill Form
+        surveyForm.action = url; // เปลี่ยน Action ไปที่ URL แก้ไข
+        modalTitle.innerText = "แก้ไขแบบสอบถาม";
+        
+        titleThInput.value = titleTh;
+        titleEnInput.value = titleEn;
+        descInput.value = desc;
+        versionDisplay.value = version;
+        if(statusSelect) statusSelect.value = status;
+
+        // 3. Handle Dependent Dropdown
+        if (groupId) {
+            groupFilter.value = groupId;
+            updatePointDropdown(groupId); // สร้างตัวเลือก Point
+            pointSelect.value = pointId;  // เลือก Point เดิม
+        } else {
+            groupFilter.value = "";
+            updatePointDropdown("");
+        }
+
+        modal.classList.remove('hidden');
+    }
+
+    function closeModal() {
+        modal.classList.add('hidden');
+    }
+
+    // --- Dropdown Logic ---
+
+    function updatePointDropdown(selectedGroupId) {
+        pointSelect.innerHTML = '';
+        
+        if (selectedGroupId && pointMap[selectedGroupId]) {
+            pointSelect.disabled = false;
+            pointSelect.innerHTML = '<option value="">-- เลือกจุดบริการ --</option>';
+
+            const points = pointMap[selectedGroupId];
+            points.forEach(function(point) {
+                const option = document.createElement('option');
+                option.value = point.id;
+                option.textContent = point.name;
+                pointSelect.appendChild(option);
+            });
+        } else {
+             pointSelect.disabled = true;
+             pointSelect.innerHTML = '<option value="">กรุณาเลือกกลุ่มภารกิจก่อน</option>';
+        }
+    }
+
+    if (groupFilter) {
+        groupFilter.addEventListener('change', function() { 
+            updatePointDropdown(this.value); 
+        });
+    }
+
+    // Auto open modal if error exists
+    {% if show_modal %}
+        modal.classList.remove('hidden');
+        // Try to restore dropdown state if possible (requires complexity, keeping simple for now)
+        if(groupFilter.value) updatePointDropdown(groupFilter.value);
+    {% endif %}
+
+</script>
+{% endblock %}
