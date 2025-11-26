@@ -1,6 +1,8 @@
 from django.db import models
 from django.contrib.auth import get_user_model
 from django.conf import settings
+from django.utils.translation import get_language
+from django.utils.translation import gettext_lazy as _
 
 class ServiceGroup(models.Model):
     name = models.CharField(max_length=255, unique=True)
@@ -9,7 +11,15 @@ class ServiceGroup(models.Model):
 
 class ServicePoint(models.Model):
     name = models.CharField(max_length=255, help_text="ชื่อจุดบริการ")
+    name_en = models.CharField(max_length=200, blank=True, null=True)
     code = models.CharField(max_length=50, unique=True, help_text="รหัส Code")
+
+    @property
+    def name_display(self):
+        """เช็คภาษาปัจจุบัน แล้วเลือก field ที่ถูกต้อง"""
+        if get_language() == 'en' and self.name_en:
+            return self.name_en
+        return self.name
 
     group = models.ForeignKey(
         ServiceGroup, 
@@ -38,8 +48,20 @@ class Survey(models.Model):
     title_th = models.CharField(max_length=255, verbose_name="ชื่อแบบสอบถาม (TH)")
     title_en = models.CharField(max_length=255, verbose_name="ชื่อแบบสอบถาม (EN)", blank=True, null=True)
     description = models.TextField(blank=True, null=True, verbose_name="คำอธิบาย")
-    
+    description_en = models.TextField(blank=True, null=True)
     version_number = models.CharField(max_length=50, verbose_name="เลขเวอร์ชัน", default="1.0")
+    
+    @property
+    def title_display(self):
+        if get_language() == 'en' and self.title_en:
+            return self.title_en
+        return self.title_th
+
+    @property
+    def description_display(self):
+        if get_language() == 'en' and self.description_en:
+            return self.description_en
+        return self.description
     
     # [สำคัญ] ตั้ง default เป็น DRAFT
     status = models.CharField(
@@ -112,6 +134,12 @@ class Question(models.Model):
     order = models.PositiveIntegerField(default=0, verbose_name="ลำดับ")
     is_required = models.BooleanField(default=True, verbose_name="บังคับตอบ")
     
+    @property
+    def text_display(self):
+        if get_language() == 'en' and self.text_en:
+            return self.text_en
+        return self.text_th
+    
     created_by_user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL, null=True, blank=True,
@@ -144,11 +172,10 @@ class Response(models.Model):
         SELF_PAY = 'SELF_PAY', 'ชำระเงินเอง (เงินสด)'
         OTHER = 'OTHER', 'อื่น ๆ'
     class AgeRange(models.TextChoices):
-        UNDER_15 = 'UNDER_15', 'ต่ำกว่า 15 ปี'
-        R_15_25 = '15_25', '15-25 ปี'
-        R_26_40 = '26_40', '26-40 ปี'
-        R_41_60 = '41_60', '41-60 ปี'
-        OVER_60 = 'OVER_60', 'มากกว่า 60 ปี'
+        UNDER_20 = 'UNDER_20', _('ต่ำกว่า 20 ปี')
+        R_20_39 = '20_39', _('20-39 ปี')
+        R_40_59 = '40_59', _('40-59 ปี')
+        OVER_60 = 'OVER_60', _('60 ปีขึ้นไป')
     class Gender(models.TextChoices):
         MALE = 'MALE', 'ชาย'
         FEMALE = 'FEMALE', 'หญิง'
@@ -213,71 +240,23 @@ class ResponseAnswer(models.Model):
         return f"Ans Q#{self.question_id}: {self.answer_text}"
 
 
-# --- 4. ตารางกลุ่มแจ้งเตือน & ตรวจสอบ (Admin Features) ---
-class AlertRule(models.Model):
-    class ConditionType(models.TextChoices):
-        EQUALS = 'EQUALS', 'เท่ากับ'
-        NOT_EQUALS = 'NOT_EQUALS', 'ไม่เท่ากับ'
-        LESS_THAN = 'LESS_THAN', 'น้อยกว่า'
-        GREATER_THAN = 'GREATER_THAN', 'มากกว่า'
-        CONTAINS = 'CONTAINS', 'มีคำว่า'
 
-    name = models.CharField(max_length=255, verbose_name="ชื่อกฎแจ้งเตือน")
-    survey_version = models.ForeignKey(Survey, on_delete=models.CASCADE, verbose_name="เวอร์ชันแบบสอบถาม")
-    question = models.ForeignKey(Question, on_delete=models.CASCADE, verbose_name="คำถามที่ตรวจสอบ")
-    condition_type = models.CharField(max_length=20, choices=ConditionType.choices, verbose_name="เงื่อนไข")
-    condition_value = models.CharField(max_length=255, verbose_name="ค่าที่ตรวจสอบ (เช่น 6 หรือ ID ตัวเลือก)")
-    is_active = models.BooleanField(default=True, verbose_name="ใช้งาน")
-    created_by_user = models.ForeignKey(
-        getattr(settings, 'AUTH_USER_MODEL', 'auth.User'),
-        on_delete=models.SET_NULL,
-        null=True,
-        verbose_name="สร้างโดย"
-    )
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="วันที่สร้าง")
+from django.contrib.auth.models import User
+
+class Notification(models.Model):
+    recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications') # แจ้งเตือนใคร
+    title = models.CharField(max_length=255)
+    message = models.TextField()
+    link = models.CharField(max_length=255, blank=True, null=True) # ลิงก์ไปหน้าดูผล
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        verbose_name = "กฎการแจ้งเตือน"
-        verbose_name_plural = "กฎการแจ้งเตือน"
-
-class Alert(models.Model):
-    class Status(models.TextChoices):
-        NEW = 'NEW', 'ใหม่'
-        ACKNOWLEDGED = 'ACKNOWLEDGED', 'รับทราบแล้ว'
-        RESOLVED = 'RESOLVED', 'แก้ไขแล้ว'
-
-    response = models.ForeignKey(Response, on_delete=models.CASCADE, verbose_name="การตอบกลับ")
-    rule = models.ForeignKey(AlertRule, on_delete=models.PROTECT, verbose_name="กฎที่ตรง")
-    status = models.CharField(max_length=20, choices=Status.choices, default=Status.NEW, verbose_name="สถานะ")
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="เวลาเกิด")
-    resolved_at = models.DateTimeField(blank=True, null=True, verbose_name="เวลาแก้ไข")
-    resolved_by_user = models.ForeignKey(
-        getattr(settings, 'AUTH_USER_MODEL', 'auth.User'),
-        on_delete=models.SET_NULL,
-        blank=True,
-        null=True,
-        verbose_name="ผู้แก้ไข"
-    )
-
-    class Meta:
-        verbose_name = "การแจ้งเตือน (Alert)"
-        verbose_name_plural = "การแจ้งเตือน (Alerts)"
-
-class AuditLog(models.Model):
-    user = models.ForeignKey(
-        getattr(settings, 'AUTH_USER_MODEL', 'auth.User'),
-        on_delete=models.SET_NULL,
-        null=True,
-        verbose_name="ผู้กระทำ"
-    )
-    action = models.CharField(max_length=100, verbose_name="การกระทำ")
-    table_name = models.CharField(max_length=100, blank=True, null=True, verbose_name="ตาราง")
-    record_id = models.BigIntegerField(blank=True, null=True, verbose_name="Record ID")
-    details = models.JSONField(blank=True, null=True, verbose_name="รายละเอียด (ก่อน/หลัง)")
-    ip_address = models.GenericIPAddressField(blank=True, null=True, verbose_name="IP Address")
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="เวลา")
-
-    class Meta:
-        verbose_name = "Audit Log"
-        verbose_name_plural = "Audit Logs"
         ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Notify {self.recipient.username}: {self.title}"
+    
+class UserProfile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    line_user_id = models.CharField(max_length=50, blank=True, null=True, verbose_name="LINE User ID")

@@ -1,4 +1,9 @@
+{% extends 'kiosk/base_kiosk.html' %} 
+{% load static i18n %}
 {% load static %}
+{% block title %}ยินดีต้อนรับ - {{ service_point.name }}{% endblock %}
+
+{% block content %}
 <!DOCTYPE html>
 <html lang="th">
 <head>
@@ -131,60 +136,88 @@
             color: #555; /* (สีเทา) */
             margin-bottom: 40px;
         }
+        .btn-lang {
+            background-color: transparent;
+            border: 1px solid #ddd;
+            border-radius: 20px; /* ทำเป็นปุ่มมนๆ */
+            padding: 6px 12px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            margin-right: 15px; /* เว้นระยะห่างจากไอคอน Settings */
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .btn-lang:hover {
+            background-color: #f0f0f0;
+            border-color: #ccc;
+        }
     </style>
 </head>
 <body>
+        
+        <div class="header">
+            <div class="header-content">
+                <img src="{% static 'images/logo.png' %}" alt="Logo" class="header-logo"> 
+            </div>
 
-    <div class="header">
-        
-        <div class="header-content">
-            <img src="{% static 'images/logo.png' %}" alt="Logo" class="header-logo">
+            {% load i18n %}
+            <form action="{% url 'set_language' %}" method="post" style="display: flex;">
+                {% csrf_token %}
+                
+                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+
+                {% get_current_language as LANGUAGE_CODE %}
+                
+                {% if LANGUAGE_CODE == 'th' %}
+                    <button type="submit" name="language" value="en" class="btn-lang">
+                        🇬🇧 <span class="lang-text">English</span>
+                    </button>
+                {% else %}
+                    <button type="submit" name="language" value="th" class="btn-lang">
+                        🇹🇭 <span class="lang-text">ภาษาไทย</span>
+                    </button>
+                {% endif %}
+            </form>
+
+            <div class="settings-container">
+                <a href="#" class="settings-icon"> <svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 0 24 24" width="24">
+                        <path d="M0 0h24v24H0V0z" fill="none"/>
+                        <path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.22-.08-.49 0-.61.22l-2 3.46c-.12.22-.07.49.12.64l2.11 1.65c-.04.32-.07.64-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.22.08.49 0 .61.22l2 3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5-3.5-1.57 3.5-3.5 3.5z"/>
+                    </svg>
+                </a>
+            </div>
         </div>
-        
-        <div class="settings-container">
-            <a class="settings-icon" id="settings-toggle" aria-label="Settings">
-                <svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 0 24 24" width="24">
-                    <path d="M0 0h24v24H0V0z" fill="none"/>
-                    <path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.22-.08-.49 0-.61.22l-2 3.46c-.12.22-.07.49.12.64l2.11 1.65c-.04.32-.07.64-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.22.08.49 0 .61.22l2 3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5-3.5-1.57 3.5-3.5 3.5z"/>
-                </svg>
-            </a>
-            
-            <a href="/login/" class="login-dropdown" id="login-dropdown">Login</a>
-        </div>
-        
-    </div>
 
     <div class="max-w-md w-full bg-white p-8 rounded-xl shadow-lg text-center space-y-6">
         
-        <!-- Logo / Header -->
         <div class="mb-4">
-            <!-- ใส่โลโก้โรงพยาบาลตรงนี้ได้ -->
-            <h1 class="text-2xl font-bold text-green-700">ระบบประเมินความพึงพอใจ</h1>
+            <h1 class="text-2xl font-bold text-green-700">{% trans "ระบบประเมินความพึงพอใจ" %}</h1>
         </div>
 
         <div class="border-t border-b py-4 border-gray-100">
-            <h2 class="text-xl font-semibold text-gray-800">{{ service_point.name }}</h2>
-            <p class="text-gray-500 text-sm mt-1">กรุณาแสดงความคิดเห็นเพื่อพัฒนาการบริการ</p>
+            <h2 class="text-xl font-semibold text-gray-800">{{ service_point.name_display }}</h2>
+            <p class="text-gray-500 text-sm mt-1">{% trans "กรุณาแสดงความคิดเห็นเพื่อพัฒนาการบริการ" %}</p>
         </div>
 
-        <!-- ส่วนแสดงผล (แก้ไขตัวแปรตรงนี้) -->
         {% if active_survey %}
             
             <div class="bg-green-50 p-4 rounded-lg border border-green-100">
-                <h3 class="font-bold text-green-800 text-lg">{{ active_survey.title_th }}</h3>
-                {% if active_survey.description %}
-                    <p class="text-green-600 text-sm mt-2">{{ active_survey.description }}</p>
+                <h3 class="font-bold text-green-800 text-lg">{{ active_survey.title_display }}</h3>
+                
+                {% if active_survey.description_display %}
+                    <p class="text-green-600 text-sm mt-2">{{ active_survey.description_display }}</p>
                 {% endif %}
             </div>
 
-            <!-- ปุ่มเริ่ม -->
             <form action="{% url 'survey:kiosk_welcome' service_point.id %}" method="POST">
                 {% csrf_token %}
-                <!-- ส่งค่า ID ไปด้วยเพื่อความชัวร์ -->
                 <input type="hidden" name="survey_id" value="{{ active_survey.id }}">
                 
                 <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-6 rounded-full shadow-lg transform transition hover:scale-105 text-xl flex items-center justify-center gap-2">
-                    <span>เริ่มทำแบบสอบถาม</span>
+                    <span>{% trans "เริ่มทำแบบสอบถาม" %}</span>
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
                     </svg>
@@ -193,15 +226,13 @@
 
         {% else %}
             
-            <!-- กรณีไม่พบแบบสอบถาม -->
             <div class="bg-red-50 p-6 rounded-lg border border-red-100 text-center">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-red-400 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <h3 class="text-lg font-bold text-red-700">ไม่พบแบบสอบถาม</h3>
-                <p class="text-red-600 mt-1">ขออภัย ไม่พบแบบสอบถามที่เปิดใช้งานสำหรับจุดบริการนี้</p>
+                <h3 class="text-lg font-bold text-red-700">{% trans "ไม่พบแบบสอบถาม" %}</h3>
+                <p class="text-red-600 mt-1">{% trans "ขออภัย ไม่พบแบบสอบถามที่เปิดใช้งานสำหรับจุดบริการนี้" %}</p>
                 
-                <!-- Debug Info (ลบออกได้เมื่อใช้งานจริง) -->
                 <div class="mt-4 text-xs text-left bg-white p-2 rounded border text-gray-400 overflow-auto">
                     <p><strong>Debug Info:</strong></p>
                     <p>Service Point ID: {{ service_point.id }}</p>
@@ -232,3 +263,4 @@
     </script>
 </body>
 </html>
+{% endblock %}

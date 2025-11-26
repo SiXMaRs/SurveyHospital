@@ -1,0 +1,34 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Manager Portal{% endblock %}</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body { font-family: 'Noto Sans Thai', sans-serif; background-color: #f3f4f6; }
+        {% block extra_css %}{% endblock %}
+    </style>
+</head>
+<body class="flex flex-col h-screen overflow-hidden">
+
+    {% include "manager/navbar.html" %}
+
+    <div class="flex flex-1 overflow-hidden">
+        
+        {% include "manager/sidebar.html" %}
+
+        <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-6 relative">
+            {% block content %}
+            {% endblock %}
+        </main>
+    </div>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

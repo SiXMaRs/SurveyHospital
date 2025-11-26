@@ -25,9 +25,10 @@
     {% include "elements/navbar.html" %}
 
     <div class="flex flex-row flex-1 overflow-hidden"> 
-        
-        {% include 'elements/sidebar.html' %}
 
+        {% block sidebar %}
+            {% include 'elements/sidebar.html' %}
+        {% endblock %}
         <main class="flex-1 p-6 overflow-y-auto"> 
             {% block content %} 
             {% endblock %}

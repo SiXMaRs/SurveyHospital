@@ -1,9 +1,11 @@
+{% load static i18n %}
+{% load static %}
 <!DOCTYPE html>
 <html lang="th">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ขอบคุณ - โรงพยาบาลตระการพืชผล</title>
+    <title>{% trans "ขอบคุณ - โรงพยาบาลตระการพืชผล" %}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
@@ -30,24 +32,24 @@
             </svg>
         </div>
 
-        <h1 class="text-2xl font-bold text-gray-800 mb-2">ขอบคุณครับ/ค่ะ</h1>
-        <p class="text-gray-600 mb-6">ข้อมูลของท่านถูกบันทึกเรียบร้อยแล้ว<br>เราจะนำไปพัฒนาการบริการให้ดียิ่งขึ้น</p>
+        <h1 class="text-2xl font-bold text-gray-800 mb-2">{% trans "ขอบคุณครับ/ค่ะ" %}</h1>
+        <p class="text-gray-600 mb-6">{%  trans "ข้อมูลของท่านถูกบันทึกเรียบร้อยแล้ว<br>เราจะนำไปพัฒนาการบริการให้ดียิ่งขึ้น" %}</p>
 
         <div class="w-full bg-gray-200 rounded-full h-1.5 mb-4 overflow-hidden">
             <div class="bg-green-500 h-1.5 rounded-full transition-all duration-[5000ms] ease-linear w-0" id="progress-bar"></div>
         </div>
         
-        <p class="text-xs text-gray-400">กำลังกลับสู่หน้าหลักใน <span id="countdown">5</span> วินาที...</p>
+        <p class="text-xs text-gray-400">{%  trans "กำลังกลับสู่หน้าหลักใน" %} <span id="countdown">3</span> {%  trans "วินาที..." %}</p>
         
         <a href="{% url 'survey:kiosk_welcome' service_point_id %}" class="mt-6 inline-block text-green-600 hover:text-green-800 font-medium text-sm">
-            กลับสู่หน้าหลักทันที
+            {%  trans "กลับสู่หน้าหลักทันที" %}
         </a>
 
     </div>
 
     <script>
         // Countdown Logic
-        let seconds = 5;
+        let seconds = 3;
         const countdownEl = document.getElementById('countdown');
         const progressBar = document.getElementById('progress-bar');
 
@@ -68,3 +70,4 @@
 
 </body>
 </html>
+ 

@@ -1,0 +1,451 @@
+{% extends 'manager/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8 font-sarabun min-h-screen">
+    
+    {% if messages %}
+    <div class="mb-6 space-y-2">
+        {% for message in messages %}
+        <div class="p-4 rounded-lg border flex items-center justify-between transition-opacity duration-500 {% if message.tags == 'success' %}bg-green-50 border-green-200 text-green-700{% else %}bg-red-50 border-red-200 text-red-700{% endif %}" role="alert">
+            <span>{{ message }}</span>
+            <button onclick="this.parentElement.remove()" class="text-sm font-bold opacity-50">&times;</button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-gray-800">แบบสอบถามประเมินความพึงพอใจ</h1>
+        <p class="text-gray-500 text-sm">จัดการข้อมูลแบบสอบถามและเวอร์ชันต่างๆ</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center justify-between hover:shadow-md transition">
+            <div class="w-14 h-14 rounded-full bg-cyan-50 flex items-center justify-center text-cyan-500">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+            </div>
+            <div class="text-right">
+                <p class="text-sm text-gray-400 font-medium mb-1">จำนวนแบบสอบถาม</p>
+                <h2 class="text-3xl font-bold text-gray-800">{{ total_surveys|default:"0" }}</h2>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-2xl p-6 shadow-sm bo
+        rder border-gray-100 flex items-center justify-between hover:shadow-md transition">
+            <div class="w-14 h-14 rounded-full bg-pink-50 flex items-center justify-center text-pink-500">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            </div>
+            <div class="text-right">
+                <p class="text-sm text-gray-400 font-medium mb-1">จำนวนคำถามรวม</p>
+                <h2 class="text-3xl font-bold text-gray-800">{{ total_questions|default:"0" }}</h2>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center justify-between hover:shadow-md transition">
+            <div class="w-14 h-14 rounded-full bg-blue-50 flex items-center justify-center text-blue-500">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+            </div>
+            <div class="text-right">
+                <p class="text-sm text-gray-400 font-medium mb-1">จุดบริการ</p>
+                <h2 class="text-3xl font-bold text-gray-800">{{ total_service_points|default:"0" }}</h2>
+            </div>
+        </div>
+    </div>
+
+    <div class="p-4 rounded-xl shadow-sm border border-gray-100 mb-6">
+        <div class="flex flex-col xl:flex-row justify-between items-center gap-4">
+            <form method="GET" class="w-full xl:w-auto flex flex-col sm:flex-row gap-3 items-center">
+                <div class="relative w-full sm:w-64">
+                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                    </span>
+                    <input type="text" name="q" value="{{ request.GET.q }}" class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm" placeholder="ค้นหารายชื่อ...">
+                </div>
+
+                <select name="point" class="w-full sm:w-48 py-2 pl-3 pr-8 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="">ทุกจุดบริการ</option>
+                    {% for p in service_points %}
+                    <option value="{{ p.id }}" {% if request.GET.point == p.id|stringformat:"s" %}selected{% endif %}>{{ p.name }}</option>
+                    {% endfor %}
+                </select>
+
+                <button type="submit" class="w-full sm:w-auto px-5 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium transition">
+                    ค้นหา
+                </button>
+            </form>
+
+            <button onclick="openAddModal()" class="w-full xl:w-auto bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg shadow-md flex items-center justify-center gap-2 transition transform hover:scale-105">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+                </svg>
+                เพิ่มแบบสอบถาม
+            </button>
+        </div>
+    </div>
+    
+    <div class="bg-white shadow-md rounded-lg overflow-hidden mb-10 border border-gray-200">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/4">ชื่อแบบสอบถาม (TH)</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/5">จุดบริการ</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">กลุ่มภารกิจ</th> 
+                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">เวอร์ชัน</th> 
+                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">สถานะ</th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">คำถาม</th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">จัดการ</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for survey in surveys %}
+                    <tr class="hover:bg-gray-50 transition duration-150">
+                        <td class="px-6 py-4">
+                            <div class="flex flex-col">
+                                <span class="font-medium text-gray-900">{{ survey.title_th }}</span>
+                                <span class="text-xs text-gray-500">{{ survey.title_en|default:"" }}</span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-700">
+                            {% if survey.service_point %}
+                                <span class="font-mono text-gray-500 mr-1">{{ survey.service_point.id }}.</span>
+                                {{ survey.service_point.name }}
+                            {% else %}
+                                <span class="text-gray-400">(ไม่ระบุ)</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-600">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
+                                {{ survey.service_point.group.name|default:"-" }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 text-center">
+                            <span class="bg-indigo-50 text-indigo-700 px-2 py-1 rounded-md text-xs font-mono font-bold border border-indigo-100">
+                                v{{ survey.version_number }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                            {% if survey.status == 'ACTIVE' %}
+                                <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                    <span class="w-1.5 h-1.5 bg-green-600 rounded-full mr-1.5 self-center"></span>&nbsp;ใช้งานจริง
+                                </span>
+                            {% else %}
+                                <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                    <span class="w-1.5 h-1.5 bg-yellow-600 rounded-full mr-1.5 self-center"></span>&nbsp;ฉบับร่าง
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-center">
+                            <span class="bg-blue-50 text-blue-600 py-1 px-2.5 rounded-full font-bold text-xs border border-blue-100">
+                                {{ survey.question_count }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 text-right text-sm font-medium whitespace-nowrap">
+                            <div class="flex justify-end items-center space-x-3">
+                                <a href="{% url 'manager:question_list' survey.id %}" class="text-indigo-600 hover:text-indigo-900 transition-colors" title="จัดการคำถาม">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                                </a>
+                                
+                                <button type="button" onclick="openEditModal(this)"
+                                        data-url="{% url 'survey:survey_edit' survey.pk %}"
+                                        data-title-th="{{ survey.title_th }}"
+                                        data-title-en="{{ survey.title_en|default:'' }}"
+                                        data-description="{{ survey.description|default:'' }}"
+                                        data-group-id="{{ survey.service_point.group.id|default:'' }}"
+                                        data-point-id="{{ survey.service_point.id|default:'' }}"
+                                        data-version="{{ survey.version_number }}"
+                                        data-status="{{ survey.status }}"
+                                        class="text-blue-600 hover:text-blue-900 transition-colors cursor-pointer" title="แก้ไข">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                                </button>
+
+                                <button type="button" onclick="openDeleteModal('{% url 'survey:survey_delete' survey.pk %}')"
+                                        class="text-red-600 hover:text-red-900 transition-colors cursor-pointer" title="ลบ">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="px-6 py-12 text-center text-gray-500 bg-gray-50">
+                            <div class="flex flex-col items-center justify-center">
+                                <svg class="w-12 h-12 text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                <span class="block">ยังไม่มีแบบสอบถามในระบบ</span>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="surveyModal" class="fixed inset-0 z-50 overflow-y-auto hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="flex items-center justify-center min-h-screen px-4 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity backdrop-blur-sm" onclick="closeModal()"></div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+            <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl w-full">
+                <div class="bg-white px-6 py-6">
+                    <h3 class="text-xl font-bold text-gray-900 border-b pb-4 mb-4" id="modalTitle">
+                        เพิ่มแบบสอบถาม
+                    </h3>
+                    
+                    <form method="POST" id="surveyForm" class="space-y-5">
+                        {% csrf_token %}
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ form.title_th.label }}</label>
+                                {{ form.title_th }}
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ form.title_en.label }}</label>
+                                {{ form.title_en }}
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ form.service_group.label }}</label>
+                                {{ form.service_group }}
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ form.service_point.label }}</label>
+                                {{ form.service_point }}
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">เวอร์ชัน</label>
+                                <input type="text" id="id_version_display" disabled class="w-full bg-gray-100 px-3 py-2 border border-gray-300 rounded-md text-gray-500 cursor-not-allowed">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ form.status.label }}</label>
+                                {{ form.status }}
+                            </div>
+
+                            <div class="col-span-1 md:col-span-2">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ form.description.label }}</label>
+                                {{ form.description }}
+                            </div>
+                        </div>
+
+                        {% if form.errors %}
+                            <div class="bg-red-50 p-3 rounded border border-red-200 text-red-600 text-sm">{{ form.errors }}</div>
+                        {% endif %}
+
+                        <div class="mt-6 flex justify-end space-x-3 pt-4 border-t border-gray-100">
+                            <button type="button" onclick="closeModal()" class="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200">ยกเลิก</button>
+                            <button type="submit" id="saveBtn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 shadow-sm transition-colors">
+                                บันทึกข้อมูล
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="deleteModal" class="fixed inset-0 z-50 overflow-y-auto hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="flex items-center justify-center min-h-screen px-4 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity backdrop-blur-sm" aria-hidden="true" onclick="closeDeleteModal()"></div>
+
+            <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-sm w-full">
+                
+                <form id="deleteForm" method="POST" action="">
+                    {% csrf_token %}
+                    
+                    <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                        <div class="sm:flex sm:items-start">
+                            <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
+                                <svg class="h-6 w-6 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                            </div>
+                            <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                                <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
+                                    ยืนยันการลบข้อมูล
+                                </h3>
+                                <div class="mt-2">
+                                    <p class="text-sm text-gray-500">
+                                        คุณแน่ใจหรือไม่ที่จะลบแบบสอบถามนี้? <br>
+                                        ข้อมูลที่เกี่ยวข้องทั้งหมดจะถูกลบและไม่สามารถกู้คืนได้
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                        <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm">
+                            ลบข้อมูล
+                        </button>
+                        <button type="button" onclick="closeDeleteModal()" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                            ยกเลิก
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<style>
+    .font-sarabun { font-family: 'Sarabun', sans-serif; }
+</style>
+
+<script>
+    // === Variables ===
+    const modal = document.getElementById('surveyModal');
+    const deleteModal = document.getElementById('deleteModal');
+    const deleteForm = document.getElementById('deleteForm');
+    const modalTitle = document.getElementById('modalTitle');
+    const surveyForm = document.getElementById('surveyForm');
+    const saveBtn = document.getElementById('saveBtn');
+    
+    const titleThInput = document.getElementById('id_title_th');
+    const titleEnInput = document.getElementById('id_title_en');
+    const descInput = document.getElementById('id_description');
+    const pointSelect = document.getElementById('id_service_point');
+    const statusSelect = document.getElementById('id_status');
+    const versionDisplay = document.getElementById('id_version_display');
+
+    // --- ADD / EDIT MODAL ---
+    function openAddModal() {
+        if(!modal) return;
+        modalTitle.innerText = "เพิ่มแบบสอบถามใหม่";
+        surveyForm.reset();
+        surveyForm.action = ""; 
+        if(versionDisplay) versionDisplay.value = "1.0";
+        if(statusSelect) statusSelect.value = "DRAFT";
+        enableSaveBtn();
+        modal.classList.remove('hidden');
+    }
+
+    function openEditModal(btn) {
+        if(!modal) return;
+        const url = btn.dataset.url;
+        const titleTh = btn.dataset.titleTh;
+        const titleEn = btn.dataset.titleEn;
+        const desc = btn.dataset.description;
+        const pointId = btn.dataset.pointId;
+        const version = btn.dataset.version;
+        const status = btn.dataset.status;
+
+        surveyForm.action = url;
+        modalTitle.innerText = "แก้ไขแบบสอบถาม";
+        
+        if(titleThInput) titleThInput.value = titleTh;
+        if(titleEnInput) titleEnInput.value = titleEn;
+        if(descInput) descInput.value = desc;
+        if(versionDisplay) versionDisplay.value = version;
+        if(statusSelect) statusSelect.value = status;
+        if(pointSelect) pointSelect.value = pointId;
+
+        captureInitialState();
+        disableSaveBtn();
+        setupChangeListeners();
+
+        modal.classList.remove('hidden');
+    }
+
+    function closeModal() {
+        if(modal) modal.classList.add('hidden');
+    }
+
+    // --- DELETE MODAL ---
+    function openDeleteModal(url) {
+        if(deleteModal && deleteForm) {
+            deleteForm.action = url;
+            deleteModal.classList.remove('hidden');
+        }
+    }
+
+    function closeDeleteModal() {
+        if(deleteModal) deleteModal.classList.add('hidden');
+    }
+
+    // --- Helper Logic ---
+    let initialFormData = {};
+
+    function captureInitialState() {
+        initialFormData = {
+            title_th: titleThInput ? titleThInput.value : "",
+            title_en: titleEnInput ? titleEnInput.value : "",
+            description: descInput ? descInput.value : "",
+            service_point: pointSelect ? pointSelect.value : "",
+            status: statusSelect ? statusSelect.value : ""
+        };
+    }
+
+    function setupChangeListeners() {
+        const inputs = [titleThInput, titleEnInput, descInput, pointSelect, statusSelect];
+        inputs.forEach(input => {
+            if(input) {
+                // Remove old listeners to avoid duplicates
+                input.removeEventListener('input', checkFormChanges);
+                input.removeEventListener('change', checkFormChanges);
+                // Add new
+                input.addEventListener('input', checkFormChanges);
+                input.addEventListener('change', checkFormChanges);
+            }
+        });
+    }
+
+    function checkFormChanges() {
+        const currentData = {
+            title_th: titleThInput ? titleThInput.value : "",
+            title_en: titleEnInput ? titleEnInput.value : "",
+            description: descInput ? descInput.value : "",
+            service_point: pointSelect ? pointSelect.value : "",
+            status: statusSelect ? statusSelect.value : ""
+        };
+
+        if (JSON.stringify(initialFormData) !== JSON.stringify(currentData)) {
+            enableSaveBtn();
+        } else {
+            disableSaveBtn();
+        }
+    }
+
+    function enableSaveBtn() {
+        if(saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.classList.remove('bg-gray-400', 'cursor-not-allowed');
+            saveBtn.classList.add('bg-blue-600', 'hover:bg-blue-700');
+        }
+    }
+
+    function disableSaveBtn() {
+        if(saveBtn) {
+            saveBtn.disabled = true;
+            saveBtn.classList.add('bg-gray-400', 'cursor-not-allowed');
+            saveBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+        }
+    }
+
+    // Auto open modal if error exists (Backend Logic)
+    {% if show_modal %}
+        if(modal) {
+            modal.classList.remove('hidden');
+            enableSaveBtn();
+        }
+    {% endif %}
+
+    // Auto-hide Alerts
+    document.addEventListener('DOMContentLoaded', function() {
+        const messages = document.querySelectorAll('.mb-6 > div[role="alert"]'); 
+        if (messages.length > 0) {
+            messages.forEach(messageDiv => {
+                setTimeout(() => {
+                    messageDiv.style.opacity = '0'; 
+                    setTimeout(() => { messageDiv.remove(); }, 500); 
+                }, 6000);
+            });
+        }
+    });
+</script>
+{% endblock %}

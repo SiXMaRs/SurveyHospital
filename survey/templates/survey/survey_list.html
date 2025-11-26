@@ -6,171 +6,227 @@
 {% block content %}
 <div class="container mx-auto px-4 py-8">
     
-    <!-- Header & Add Button -->
+    {% if messages %}
+    <div class="mb-6 space-y-2">
+        {% for message in messages %}
+        <div class="p-4 rounded-lg border flex items-center justify-between transition-opacity duration-500 {% if message.tags == 'success' %}bg-green-50 border-green-200 text-green-700{% else %}bg-red-50 border-red-200 text-red-700{% endif %}" role="alert">
+            <div class="flex items-center">
+                <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+                <span>{{ message }}</span>
+            </div>
+            <button onclick="this.parentElement.remove()" class="text-sm font-bold opacity-50 hover:opacity-100">&times;</button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
     <div class="flex justify-between items-center mb-6">
-        <h1 class="text-3xl font-bold text-gray-800">{{ page_title }}</h1>
-        <button onclick="openAddModal()" class="bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700 flex items-center transition transform hover:scale-105">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-800">{{ page_title }}</h1>
+            <p class="text-gray-500 text-sm mt-1">จัดการแบบสอบถามทั้งหมดในระบบ</p>
+        </div>
+        <button onclick="openAddModal()" class="bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700 flex items-center gap-2 transition transform hover:scale-105">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                 <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
             </svg>
             เพิ่มแบบสอบถามใหม่
         </button>
     </div>
 
-    <!-- Survey Table -->
-    <div class="bg-white shadow-md rounded-lg overflow-hidden mb-10">
-        <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-100">
-                <tr>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ชื่อแบบสอบถาม (TH)</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">จุดบริการ</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">กลุ่มภารกิจ</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">สถานะ</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">คำถาม</th>
-                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
-                </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-                {% for survey in surveys %}
-                <tr class="hover:bg-gray-50 transition">
-                    <td class="px-6 py-4">
-                        <div class="font-medium text-gray-900">{{ survey.title_th }}</div>
-                        <div class="text-xs text-gray-500">v{{ survey.version_number }}</div>
-                    </td>
-                    <td class="px-6 py-4 text-sm text-gray-700">
-                        {{ survey.service_point.id}}.{{ survey.service_point.name|default:"(ไม่ระบุ)" }}
-                    </td>
-                    <td class="px-6 py-4 text-sm text-gray-500">
-                        {{ survey.service_point.group.name|default:"-" }}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        {% if survey.status == 'ACTIVE' %}
-                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">ใช้งานจริง</span>
-                        {% else %}
-                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">ฉบับร่าง</span>
-                        {% endif %}
-                    </td>
-                    <td class="px-6 py-4 text-sm text-gray-700">
-                        {{ survey.question_count }} ข้อ
-                    </td>
-                    <td class="px-6 py-4 text-right text-sm font-medium space-x-2">
-                        <a href="{% url 'survey:question_list' survey.id %}" class="text-indigo-600 hover:text-indigo-900">จัดการคำถาม</a>
+    <div class="bg-white shadow-md rounded-lg overflow-hidden mb-10 border border-gray-200">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/4">ชื่อแบบสอบถาม (TH)</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/5">จุดบริการ</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">กลุ่มภารกิจ</th> <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">เวอร์ชัน</th> <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">สถานะ</th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">คำถาม</th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">จัดการ</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for survey in surveys %}
+                    <tr class="hover:bg-gray-50 transition duration-150">
                         
-                        <!-- ปุ่มแก้ไข (เปลี่ยนเป็น Button เพื่อเรียก JS Popup) -->
-                        <button type="button" 
-                                onclick="openEditModal(this)"
-                                data-url="{% url 'survey:survey_edit' survey.pk %}"
-                                data-title-th="{{ survey.title_th }}"
-                                data-title-en="{{ survey.title_en|default:'' }}"
-                                data-description="{{ survey.description|default:'' }}"
-                                data-group-id="{{ survey.service_point.group.id|default:'' }}"
-                                data-point-id="{{ survey.service_point.id|default:'' }}"
-                                data-version="{{ survey.version_number }}"
-                                data-status="{{ survey.status }}"
-                                class="text-blue-600 hover:text-blue-900 cursor-pointer">
-                            แก้ไข
-                        </button>
+                        <td class="px-6 py-4">
+                            <div class="flex flex-col">
+                                <span class="font-medium text-gray-900">{{ survey.title_th }}</span>
+                                <span class="text-xs text-gray-500">{{ survey.title_en|default:"" }}</span>
+                            </div>
+                        </td>
+                        
+                        <td class="px-6 py-4 text-sm text-gray-700">
+                            {% if survey.service_point %}
+                                <span class="font-mono text-gray-500 mr-1">{{ survey.service_point.id }}.</span>
+                                {{ survey.service_point.name }}
+                            {% else %}
+                                <span class="text-gray-400">(ไม่ระบุ)</span>
+                            {% endif %}
+                        </td>
+                        
+                        <td class="px-6 py-4 text-sm text-gray-600">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
+                                {{ survey.service_point.group.name|default:"-" }}
+                            </span>
+                        </td>
 
-                        <a href="{% url 'survey:survey_delete' survey.pk %}" class="text-red-600 hover:text-red-900 ml-2">ลบ</a>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="6" class="px-6 py-10 text-center text-gray-500">
-                        ยังไม่มีแบบสอบถามในระบบ
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                        <td class="px-6 py-4 text-center">
+                            <span class="bg-indigo-50 text-indigo-700 px-2 py-1 rounded-md text-xs font-mono font-bold border border-indigo-100">
+                                v{{ survey.version_number }}
+                            </span>
+                        </td>
+                        
+                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                            {% if survey.status == 'ACTIVE' %}
+                                <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                    <span class="w-1.5 h-1.5 bg-green-600 rounded-full mr-1.5 self-center"></span>&nbsp;ใช้งานจริง
+                                </span>
+                            {% else %}
+                                <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                    <span class="w-1.5 h-1.5 bg-yellow-600 rounded-full mr-1.5 self-center"></span>&nbsp;ฉบับร่าง
+                                </span>
+                            {% endif %}
+                        </td>
+                        
+                        <td class="px-6 py-4 text-center">
+                            <span class="bg-blue-50 text-blue-600 py-1 px-2.5 rounded-full font-bold text-xs border border-blue-100">
+                                {{ survey.question_count }}
+                            </span>
+                        </td>
+                        
+                        <td class="px-6 py-4 text-right text-sm font-medium whitespace-nowrap">
+                            <div class="flex justify-end items-center space-x-3">
+                                <a href="{% url 'survey:question_list' survey.id %}" class="text-indigo-600 hover:text-indigo-900 transition-colors" title="จัดการคำถาม">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                                </a>
+                                
+                                <button type="button" 
+                                        onclick="openEditModal(this)"
+                                        data-url="{% url 'survey:survey_edit' survey.pk %}"
+                                        data-title-th="{{ survey.title_th }}"
+                                        data-title-en="{{ survey.title_en|default:'' }}"
+                                        data-description="{{ survey.description|default:'' }}"
+                                        data-group-id="{{ survey.service_point.group.id|default:'' }}"
+                                        data-point-id="{{ survey.service_point.id|default:'' }}"
+                                        data-version="{{ survey.version_number }}"
+                                        data-status="{{ survey.status }}"
+                                        class="text-blue-600 hover:text-blue-900 transition-colors cursor-pointer" title="แก้ไข">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                                </button>
+
+                                <button type="button" 
+                                        onclick="openDeleteModal('{% url 'survey:survey_delete' survey.pk %}')"
+                                        class="text-red-600 hover:text-red-900 transition-colors cursor-pointer" title="ลบ">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="px-6 py-12 text-center text-gray-500 bg-gray-50">
+                            <div class="flex flex-col items-center justify-center">
+                                <svg class="w-12 h-12 text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                <span class="block">ยังไม่มีแบบสอบถามในระบบ</span>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 
-    <!-- ================= MODAL (รวม Add/Edit) ================= -->
     <div id="surveyModal" class="fixed inset-0 z-50 overflow-y-auto hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            
-            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onclick="closeModal()"></div>
+        <div class="flex items-center justify-center min-h-screen px-4 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity backdrop-blur-sm" aria-hidden="true" onclick="closeModal()"></div>
             <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
 
             <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl w-full">
-                <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <div class="bg-white px-6 py-6">
+                    <h3 class="text-xl font-bold text-gray-900 border-b pb-4 mb-4" id="modalTitle">
+                        เพิ่มแบบสอบถาม
+                    </h3>
                     
-                    <div class="mt-3 text-center sm:mt-0 sm:text-left w-full">
-                        <h3 class="text-xl leading-6 font-bold text-gray-900 border-b pb-2 mb-4" id="modalTitle">
-                            <!-- Title จะเปลี่ยนตามโหมด (เพิ่ม/แก้ไข) -->
-                        </h3>
-                        
-                        <form method="POST" id="surveyForm" class="space-y-4">
-                            {% csrf_token %}
+                    <form method="POST" id="surveyForm" class="space-y-4">
+                        {% csrf_token %}
 
-                            <!-- TH Title -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">ชื่อแบบสอบถาม (TH)</label>
-                                <input type="text" name="{{ form.title_th.name }}" id="id_title_th" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ form.title_th.label }}</label>
+                                {{ form.title_th }}
                             </div>
-
-                            <!-- EN Title -->
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">ชื่อแบบสอบถาม (EN)</label>
-                                <input type="text" name="{{ form.title_en.name }}" id="id_title_en" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ form.title_en.label }}</label>
+                                {{ form.title_en }}
                             </div>
-
-                            <!-- Description -->
+                            
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">คำอธิบาย</label>
-                                <textarea name="{{ form.description.name }}" id="id_description" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ form.service_group.label }}</label>
+                                {{ form.service_group }}
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ form.service_point.label }}</label>
+                                {{ form.service_point }}
                             </div>
 
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <!-- Service Group -->
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ form.service_group.label }}</label>
-                                    {{ form.service_group }}
-                                </div>
-                                
-                                <!-- Service Point -->
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                                         {{ form.service_point.label }}
-                                    </label>
-                                    {{ form.service_point }} 
-                                </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">เวอร์ชัน</label>
+                                <input type="text" id="id_version_display" disabled class="w-full bg-gray-100 px-3 py-2 border border-gray-300 rounded-md text-gray-500 cursor-not-allowed">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ form.status.label }}</label>
+                                {{ form.status }}
                             </div>
 
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
-                                <!-- Version -->
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">เวอร์ชัน</label>
-                                    <input type="text" id="id_version_display" disabled class="w-full bg-gray-100 px-3 py-2 border border-gray-300 rounded-md text-gray-500">
-                                </div>
-
-                                <!-- Status -->
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ form.status.label }}</label>
-                                    {{ form.status }}
-                                </div>
+                            <div class="col-span-1 md:col-span-2">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ form.description.label }}</label>
+                                {{ form.description }}
                             </div>
+                        </div>
 
-                            <!-- Error Display -->
-                            {% if form.errors %}
-                                <div class="bg-red-50 p-3 rounded-md border border-red-200 text-red-600 text-sm mt-2">
-                                    <p class="font-bold">เกิดข้อผิดพลาด:</p>
-                                    {{ form.errors }}
-                                </div>
-                            {% endif %}
+                        {% if form.errors %}
+                            <div class="bg-red-50 p-3 rounded border border-red-200 text-red-600 text-sm">{{ form.errors }}</div>
+                        {% endif %}
 
-                            <!-- Buttons -->
-                            <div class="mt-6 flex justify-end space-x-3">
-                                <button type="button" onclick="closeModal()" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300">
-                                    ยกเลิก
-                                </button>
-                                <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 shadow">
-                                    บันทึกข้อมูล
-                                </button>
-                            </div>
-                        </form>
-                    </div>
+                        <div class="mt-6 flex justify-end space-x-3 pt-4 border-t border-gray-100">
+                            <button type="button" onclick="closeModal()" class="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200">ยกเลิก</button>
+                            <button type="submit" id="saveBtn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 shadow-sm transition-colors">
+                                บันทึกข้อมูล
+                            </button>
+                        </div>
+                    </form>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="deleteModal" class="fixed inset-0 z-50 overflow-y-auto hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="flex items-center justify-center min-h-screen px-4 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity backdrop-blur-sm" aria-hidden="true" onclick="closeDeleteModal()"></div>
+
+            <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-sm w-full">
+                <form id="deleteForm" method="POST" action="">
+                    {% csrf_token %}
+                    <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                        <div class="sm:flex sm:items-start">
+                            <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
+                                <svg class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                            </div>
+                            <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                                <h3 class="text-lg leading-6 font-medium text-gray-900">ยืนยันการลบ</h3>
+                                <div class="mt-2">
+                                    <p class="text-sm text-gray-500">คุณแน่ใจหรือไม่ที่จะลบแบบสอบถามนี้? <br> ข้อมูลทั้งหมดจะหายไป</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                        <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 sm:ml-3 sm:w-auto sm:text-sm">ลบข้อมูล</button>
+                        <button type="button" onclick="closeDeleteModal()" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">ยกเลิก</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -178,76 +234,65 @@
 </div>
 
 <script>
-    // Elements
     const modal = document.getElementById('surveyModal');
+    const deleteModal = document.getElementById('deleteModal');
+    const deleteForm = document.getElementById('deleteForm');
     const modalTitle = document.getElementById('modalTitle');
     const surveyForm = document.getElementById('surveyForm');
+    const saveBtn = document.getElementById('saveBtn');
     
-    // Form Fields
     const titleThInput = document.getElementById('id_title_th');
     const titleEnInput = document.getElementById('id_title_en');
     const descInput = document.getElementById('id_description');
     const groupFilter = document.getElementById('id_group_filter');
     const pointSelect = document.getElementById('id_service_point');
-    const statusSelect = document.getElementById('id_status'); // Django ปกติจะตั้ง id_status ให้
+    const statusSelect = document.getElementById('id_status');
     const versionDisplay = document.getElementById('id_version_display');
 
     const pointMap = {{ point_map_json|safe }};
-    
-    // Tailwind Styles
-    const tailwindClass = "block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm disabled:bg-gray-100 disabled:text-gray-400";
+    let initialFormData = {};
+
+    const tailwindClass = "block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm disabled:bg-gray-100 disabled:text-gray-400";
     if(groupFilter) groupFilter.className = tailwindClass;
     if(pointSelect) pointSelect.className = tailwindClass;
     if(statusSelect) statusSelect.className = tailwindClass;
 
-    // --- Modal Control ---
-
     function openAddModal() {
-        // 1. Reset Form for "Add"
-        surveyForm.reset();
-        surveyForm.action = ""; // Post ไป URL ปัจจุบัน (Create)
         modalTitle.innerText = "เพิ่มแบบสอบถามใหม่";
-        
-        // 2. Set Default Values
+        surveyForm.reset();
+        surveyForm.action = ""; 
         versionDisplay.value = "1.0";
         if(statusSelect) statusSelect.value = "DRAFT";
-
-        // 3. Reset Dropdown
         updatePointDropdown(""); 
-
+        enableSaveBtn(); // Add Mode
         modal.classList.remove('hidden');
     }
 
     function openEditModal(btn) {
-        // 1. Get Data from Button
-        const url = btn.dataset.url;
-        const titleTh = btn.dataset.titleTh;
-        const titleEn = btn.dataset.titleEn;
-        const desc = btn.dataset.description;
+        modalTitle.innerText = "แก้ไขแบบสอบถาม (สร้างเวอร์ชันใหม่)";
+        surveyForm.action = btn.dataset.url || "#";
+        
+        titleThInput.value = btn.dataset.titleTh;
+        titleEnInput.value = btn.dataset.titleEn;
+        descInput.value = btn.dataset.description;
+        versionDisplay.value = btn.dataset.version;
+        if(statusSelect) statusSelect.value = btn.dataset.status;
+
         const groupId = btn.dataset.groupId;
         const pointId = btn.dataset.pointId;
-        const version = btn.dataset.version;
-        const status = btn.dataset.status;
 
-        // 2. Fill Form
-        surveyForm.action = url; // เปลี่ยน Action ไปที่ URL แก้ไข
-        modalTitle.innerText = "แก้ไขแบบสอบถาม";
-        
-        titleThInput.value = titleTh;
-        titleEnInput.value = titleEn;
-        descInput.value = desc;
-        versionDisplay.value = version;
-        if(statusSelect) statusSelect.value = status;
-
-        // 3. Handle Dependent Dropdown
         if (groupId) {
-            groupFilter.value = groupId;
-            updatePointDropdown(groupId); // สร้างตัวเลือก Point
-            pointSelect.value = pointId;  // เลือก Point เดิม
+            if(groupFilter) groupFilter.value = groupId;
+            updatePointDropdown(groupId);
+            if(pointSelect) pointSelect.value = pointId;
         } else {
-            groupFilter.value = "";
+            if(groupFilter) groupFilter.value = "";
             updatePointDropdown("");
         }
+
+        captureInitialState();
+        disableSaveBtn();
+        setupChangeListeners();
 
         modal.classList.remove('hidden');
     }
@@ -256,20 +301,24 @@
         modal.classList.add('hidden');
     }
 
-    // --- Dropdown Logic ---
+    function openDeleteModal(url) {
+        deleteForm.action = url;
+        deleteModal.classList.remove('hidden');
+    }
+    function closeDeleteModal() {
+        deleteModal.classList.add('hidden');
+    }
 
     function updatePointDropdown(selectedGroupId) {
+        if(!pointSelect) return;
         pointSelect.innerHTML = '';
-        
         if (selectedGroupId && pointMap[selectedGroupId]) {
             pointSelect.disabled = false;
             pointSelect.innerHTML = '<option value="">-- เลือกจุดบริการ --</option>';
-
-            const points = pointMap[selectedGroupId];
-            points.forEach(function(point) {
+            pointMap[selectedGroupId].forEach(function(point) {
                 const option = document.createElement('option');
                 option.value = point.id;
-                option.textContent = point.name;
+                option.textContent = point.id + ". " + point.name; // 🔴 เพิ่ม ID ตรงนี้
                 pointSelect.appendChild(option);
             });
         } else {
@@ -284,12 +333,87 @@
         });
     }
 
-    // Auto open modal if error exists
+    function captureInitialState() {
+        initialFormData = {
+            title_th: titleThInput.value,
+            title_en: titleEnInput.value,
+            description: descInput.value,
+            service_point: pointSelect ? pointSelect.value : "",
+            status: statusSelect ? statusSelect.value : ""
+        };
+    }
+
+    function setupChangeListeners() {
+        const inputs = [titleThInput, titleEnInput, descInput, pointSelect, statusSelect, groupFilter];
+        inputs.forEach(input => {
+            if(input) {
+                input.removeEventListener('input', checkFormChanges);
+                input.removeEventListener('change', checkFormChanges);
+                input.addEventListener('input', checkFormChanges);
+                input.addEventListener('change', checkFormChanges);
+            }
+        });
+    }
+
+    function checkFormChanges() {
+        const currentData = {
+            title_th: titleThInput.value,
+            title_en: titleEnInput.value,
+            description: descInput.value,
+            service_point: pointSelect ? pointSelect.value : "",
+            status: statusSelect ? statusSelect.value : ""
+        };
+
+        if (JSON.stringify(initialFormData) !== JSON.stringify(currentData)) {
+            enableSaveBtn();
+        } else {
+            disableSaveBtn();
+        }
+    }
+
+    function enableSaveBtn() {
+        saveBtn.disabled = false;
+        saveBtn.classList.remove('bg-gray-400', 'cursor-not-allowed');
+        saveBtn.classList.add('bg-blue-600', 'hover:bg-blue-700');
+    }
+
+    function disableSaveBtn() {
+        saveBtn.disabled = true;
+        saveBtn.classList.add('bg-gray-400', 'cursor-not-allowed');
+        saveBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+    }
+
     {% if show_modal %}
         modal.classList.remove('hidden');
-        // Try to restore dropdown state if possible (requires complexity, keeping simple for now)
-        if(groupFilter.value) updatePointDropdown(groupFilter.value);
+        enableSaveBtn();
+        if(groupFilter && groupFilter.value) updatePointDropdown(groupFilter.value);
     {% endif %}
-
 </script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // เลือกข้อความแจ้งเตือนทั้งหมด
+        // ใช้ selector ที่เจาะจงมากขึ้นเพื่อความแม่นยำ
+        const messages = document.querySelectorAll('.mb-6 > div[role="alert"]'); 
+
+        if (messages.length > 0) {
+            const timeoutDuration = 6000; // 6000 milliseconds = 6 วินาที
+
+            messages.forEach(messageDiv => {
+                // ถ้า element มีอยู่ (ซึ่งควรมี)
+                setTimeout(() => {
+                    // 1. ทำให้จางหายไป (ใช้ CSS Transition ที่กำหนดไว้ใน HTML)
+                    messageDiv.style.opacity = '0'; 
+
+                    // 2. ลบออกจาก DOM หลังจาก animation จบ (500ms)
+                    setTimeout(() => {
+                        messageDiv.remove();
+                    }, 500); 
+                    
+                }, timeoutDuration);
+            });
+        }
+    });
+</script>
+
 {% endblock %}

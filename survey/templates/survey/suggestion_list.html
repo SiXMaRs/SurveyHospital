@@ -6,7 +6,6 @@
 {% block content %}
 <div class="p-8 bg-[#f3f4f6] min-h-screen font-sarabun">
     
-    <!-- Header & Breadcrumb -->
     <div class="mb-6">
         <nav class="text-sm text-gray-500 mb-2">
             <a href="{% url 'survey:assessment_results' %}" class="hover:underline">ผลการประเมิน</a> > 
@@ -15,15 +14,13 @@
         <h1 class="text-2xl font-bold text-gray-700">รายการข้อเสนอแนะ</h1>
     </div>
 
-    <!-- Filter Bar -->
-    <form method="GET" class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-6 flex flex-wrap gap-4 items-end">
-        <!-- Search -->
-        <div class="w-full md:w-64">
+    <form method="GET" id="filterForm" class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-6 flex flex-wrap gap-4 items-end">
+        
+        <div class="w-full md:w-48">
             <label class="block text-xs font-semibold text-gray-500 mb-1">ค้นหาข้อความ</label>
             <input type="text" name="q" value="{{ search_query }}" placeholder="พิมพ์คำค้นหา..." class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500">
         </div>
         
-        <!-- Date -->
         <div>
             <label class="block text-xs font-semibold text-gray-500 mb-1">ช่วงเวลา</label>
             <div class="flex items-center gap-2">
@@ -33,26 +30,31 @@
             </div>
         </div>
 
-        <!-- Group/Point -->
         <div>
-            <label class="block text-xs font-semibold text-gray-500 mb-1">จุดบริการ</label>
-            <select name="point_id" class="p-2 border border-gray-300 rounded-lg text-sm text-gray-600 w-48">
+            <label class="block text-xs font-semibold text-gray-500 mb-1">กลุ่มภารกิจ</label>
+            <select name="group_id" id="group_filter" onchange="updatePointDropdown()" class="p-2 border border-gray-300 rounded-lg text-sm text-gray-600 w-48">
                 <option value="">ทั้งหมด</option>
-                {% for p in points %}
-                    <option value="{{ p.id }}" {% if selected_point == p.id %}selected{% endif %}>{{ p.name }}</option>
+                {% for g in groups %}
+                    <option value="{{ g.id }}" {% if selected_group == g.id %}selected{% endif %}>{{ g.name }}</option>
                 {% endfor %}
             </select>
         </div>
 
-        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg text-sm font-bold shadow transition">
+        <div>
+            <label class="block text-xs font-semibold text-gray-500 mb-1">จุดบริการ</label>
+            <select name="point_id" id="point_filter" class="p-2 border border-gray-300 rounded-lg text-sm text-gray-600 w-48 disabled:bg-gray-100">
+                <option value="">กรุณาเลือกกลุ่มภารกิจก่อน</option>
+                </select>
+        </div>
+
+        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg text-sm font-bold shadow transition mb-[1px]">
             ค้นหา
         </button>
-        <a href="{% url 'survey:suggestion_list' %}" class="text-gray-500 text-sm hover:text-gray-700 underline self-center">ล้างค่า</a>
+        <a href="{% url 'survey:suggestion_list' %}" class="text-gray-500 text-sm hover:text-gray-700 underline self-center mb-2">ล้างค่า</a>
     </form>
 
-    <!-- Table Section -->
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <table class="w-full text-left border-collapse table-fixed"> <!-- เพิ่ม table-fixed -->
+        <table class="w-full text-left border-collapse table-fixed">
             <thead>
                 <tr class="bg-blue-50 text-blue-700 text-sm font-bold border-b border-blue-100">
                     <th class="p-4 w-1/2">ข้อเสนอแนะ</th>
@@ -66,8 +68,7 @@
                 {% for item in page_obj %}
                 <tr class="hover:bg-gray-50 transition group">
                     <td class="p-4 align-top">
-                        <!-- [แก้ไข] เพิ่ม class 'break-words' และ 'break-all' เพื่อบังคับตัดคำ -->
-                        <p class="text-gray-800 whitespace-pre-wrap break-words break-all">{{ item.answer_text }}</p>
+                        <p class="text-gray-800 whitespace-pre-wrap break-words break-all line-clamp-3">{{ item.answer_text }}</p>
                     </td>
                     <td class="p-4 align-top whitespace-nowrap">
                         <span class="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs font-medium">{{ item.response.user_role|default:"ทั่วไป" }}</span>
@@ -77,10 +78,10 @@
                         <div class="text-xs text-gray-400 truncate">{{ item.response.service_point.group.name }}</div>
                     </td>
                     <td class="p-4 align-top whitespace-nowrap text-gray-400">
-                        {{ resp.submitted_at|date:"d M, H:i น." }}
+                        {{ item.response.submitted_at|date:"d M, H:i น." }}
                     </td>
                     <td class="p-4 align-top text-center">
-                        <button class="text-blue-500 hover:text-blue-700 p-1 rounded hover:bg-blue-50 transition" title="ดูรายละเอียด"
+                        <button class="text-blue-500 hover:text-blue-700 p-1 rounded hover:bg-blue-50 transition" 
                             onclick="openDetailModal('{{ item.answer_text|escapejs }}', '{{ item.response.user_role }}', '{{ item.response.service_point.name|escapejs }}', '{{ item.response.submitted_at|date:"d M Y, H:i" }}')">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
                         </button>
@@ -94,23 +95,26 @@
             </tbody>
         </table>
         
-        <!-- Pagination -->
         {% if page_obj.has_other_pages %}
         <div class="p-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-2">
-            {% if page_obj.has_previous %}
-                <a href="?page={{ page_obj.previous_page_number }}&q={{ search_query }}" class="px-3 py-1 bg-white border rounded hover:bg-gray-100">ก่อนหน้า</a>
-            {% endif %}
-            <span class="px-3 py-1 text-gray-500">หน้า {{ page_obj.number }} จาก {{ page_obj.paginator.num_pages }}</span>
-            {% if page_obj.has_next %}
-                <a href="?page={{ page_obj.next_page_number }}&q={{ search_query }}" class="px-3 py-1 bg-white border rounded hover:bg-gray-100">ถัดไป</a>
-            {% endif %}
+            {% with params="q="|add:search_query|add:"&start_date="|add:start_date|add:"&end_date="|add:end_date|add:"&group_id="|add:selected_group|add:"&point_id="|add:selected_point %}
+                
+                {% if page_obj.has_previous %}
+                    <a href="?page={{ page_obj.previous_page_number }}&{{ params }}" class="px-3 py-1 bg-white border rounded hover:bg-gray-100 text-sm text-gray-600">ก่อนหน้า</a>
+                {% endif %}
+                
+                <span class="px-3 py-1 text-sm text-gray-500">หน้า {{ page_obj.number }} จาก {{ page_obj.paginator.num_pages }}</span>
+                
+                {% if page_obj.has_next %}
+                    <a href="?page={{ page_obj.next_page_number }}&{{ params }}" class="px-3 py-1 bg-white border rounded hover:bg-gray-100 text-sm text-gray-600">ถัดไป</a>
+                {% endif %}
+
+            {% endwith %}
         </div>
         {% endif %}
     </div>
-
 </div>
 
-<!-- Detail Modal (Popup เล็กสำหรับดูข้อความเต็ม) -->
 <div id="detailModal" class="fixed inset-0 z-50 hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
     <div class="flex items-center justify-center min-h-screen px-4 text-center sm:p-0">
         <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity backdrop-blur-sm" onclick="closeDetailModal()"></div>
@@ -121,7 +125,6 @@
                 <p class="text-xs text-gray-400" id="modalDate"></p>
             </div>
             <div class="bg-gray-50 p-5 rounded-xl border border-gray-200 max-h-60 overflow-y-auto">
-                <!-- [แก้ไข] ใส่ break-words break-all ที่ Modal ด้วยเช่นกัน -->
                 <p class="text-gray-800 text-base leading-relaxed whitespace-pre-wrap break-words break-all" id="modalText"></p>
             </div>
             <div class="mt-6 flex justify-end">
@@ -132,6 +135,7 @@
 </div>
 
 <script>
+    // === Modal Logic ===
     function openDetailModal(text, user, point, date) {
         document.getElementById('modalText').innerText = text;
         document.getElementById('modalUser').innerText = user;
@@ -142,5 +146,37 @@
     function closeDetailModal() {
         document.getElementById('detailModal').classList.add('hidden');
     }
+
+    // === Dependent Dropdown Logic ===
+    const pointMap = {{ point_map_json|safe }};
+    const groupFilter = document.getElementById('group_filter');
+    const pointFilter = document.getElementById('point_filter');
+    const selectedPointId = "{{ selected_point }}";
+
+    function updatePointDropdown() {
+        const groupId = groupFilter.value;
+        pointFilter.innerHTML = ''; // ล้างค่าเก่า
+
+        if (groupId && pointMap[groupId]) {
+            pointFilter.disabled = false;
+            pointFilter.innerHTML = '<option value="">ทั้งหมด</option>';
+            
+            pointMap[groupId].forEach(point => {
+                const option = document.createElement('option');
+                option.value = point.id;
+                option.textContent = point.name;
+                if (point.id == selectedPointId) option.selected = true;
+                pointFilter.appendChild(option);
+            });
+        } else {
+            pointFilter.disabled = true;
+            pointFilter.innerHTML = '<option value="">กรุณาเลือกกลุ่มภารกิจก่อน</option>';
+        }
+    }
+
+    // เรียกทำงานทันทีที่โหลดหน้า (เพื่อคงค่าเดิมหลังกด Search)
+    document.addEventListener('DOMContentLoaded', function() {
+        updatePointDropdown();
+    });
 </script>
 {% endblock %}

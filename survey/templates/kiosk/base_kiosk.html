@@ -1,0 +1,124 @@
+{% load static i18n %}
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}ระบบประเมินความพึงพอใจ{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Sarabun', sans-serif; background-color: #fcfcfc; }
+        
+        /* Dropdown Styles */
+        .dropdown-menu {
+            display: none;
+            position: absolute;
+            top: 120%; /* ขยับลงมาหน่อย */
+            right: 0;
+            z-index: 50;
+            min-width: 160px;
+            background-color: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e5e7eb;
+            overflow: hidden;
+        }
+        .dropdown-menu.show { display: block; }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="flex flex-col min-h-screen">
+
+    <nav class="w-full p-4 bg-[#27693d] text-white flex items-center justify-between shadow-md relative z-40">
+
+        <div class="flex items-center space-x-4">
+            <img src="{% static 'images/logo.png' %}" alt="Logo" class="h-20 w-auto ml-10 object-contain">
+        </div>
+    
+        <div class="flex items-center space-x-6 mr-10">
+            
+            <form action="{% url 'set_language' %}" method="post" class="flex items-center m-0">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                {% get_current_language as LANGUAGE_CODE %}
+                
+                {% if LANGUAGE_CODE == 'th' %}
+                    <button type="submit" name="language" value="en" class="flex items-center space-x-2 border border-white/30 hover:bg-white/20 rounded-full px-4 py-1 transition text-sm">
+                        <span>🇬🇧</span> <span>English</span>
+                    </button>
+                {% else %}
+                    <button type="submit" name="language" value="th" class="flex items-center space-x-2 border border-white/30 hover:bg-white/20 rounded-full px-4 py-1 transition text-sm">
+                        <span>🇹🇭</span> <span>ภาษาไทย</span>
+                    </button>
+                {% endif %}
+            </form>
+
+            <div class="relative" id="dropdown-container">
+                
+                <button id="dropdown-toggle" class="p-2 hover:bg-[#1e5230] rounded-full transition duration-300 text-white focus:outline-none">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                </button>
+
+                <div id="dropdown-menu" class="dropdown-menu text-gray-700 w-48">
+                    
+                    {% if request.user.is_authenticated %}
+                        <div class="px-4 py-3 border-b border-gray-100 bg-gray-50">
+                            <p class="text-xs text-gray-500">{% trans "เข้าสู่ระบบโดย" %}</p>
+                            <p class="text-sm font-bold text-gray-900 truncate">{{ request.user.username }}</p>
+                        </div>
+                        
+                        <a href="/admin/logout/" class="block px-4 py-3 hover:bg-red-50 text-red-600 font-semibold transition flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                            </svg>
+                            {% trans "ออกจากระบบ" %}
+                        </a>
+
+                    {% else %}
+                        <a href="/admin/" class="block px-4 py-3 hover:bg-green-50 text-green-700 font-bold text-center transition">
+                            Admin Login
+                        </a>
+                    {% endif %}
+                    
+                </div>
+            </div>
+    </nav>
+
+    <div class="flex-grow flex items-center justify-center w-full pt-10">
+        {% block content %}
+        {% endblock %}
+    </div>
+    
+    <footer class="text-center py-6 text-gray-400 text-xs">
+        &copy; {% now "Y" %} Trakan Phuet Phon Hospital | ระบบประเมินความพึงพอใจ
+    </footer>
+
+    <script>
+        // Script เดียว ใช้ได้ทั้งตอน Login และ ไม่ Login
+        const container = document.getElementById('dropdown-container');
+        const toggleBtn = document.getElementById('dropdown-toggle');
+        const menu = document.getElementById('dropdown-menu');
+
+        if (toggleBtn && menu) {
+            // คลิกที่ปุ่มเพื่อเปิด/ปิด
+            toggleBtn.addEventListener('click', function(e) {
+                e.stopPropagation(); // ป้องกัน event ทะลุไปถึง window
+                menu.classList.toggle('show');
+            });
+
+            // คลิกที่ไหนก็ได้บนหน้าจอเพื่อปิด
+            window.addEventListener('click', function(e) {
+                if (!container.contains(e.target)) {
+                    menu.classList.remove('show');
+                }
+            });
+        }
+    </script>
+    {% block extra_script %}{% endblock %}
+</body>
+</html>

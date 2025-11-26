@@ -5,3 +5,5 @@ djangorestframework-simplejwt
 openpyxl   
 django_browser_reload
 pyyaml
+requests
+django-modeltranslation

@@ -1,0 +1,235 @@
+{% extends 'manager/base.html' %} {# 👈 เปลี่ยน base template เป็นของ manager #}
+{% load static %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="p-8 bg-[#f3f4f6] min-h-screen font-sarabun">
+    
+    <div class="mb-6">
+        <nav class="text-sm text-gray-500 mb-2">
+            {# 🔴 แก้ไข URL ไปยังหน้าผลการประเมินของ Manager #}
+            <a href="{% url 'manager:assessment_results' %}" class="hover:underline">ผลการประเมิน</a> > 
+            <span class="text-gray-800">ข้อเสนอแนะทั้งหมด</span>
+        </nav>
+        <h1 class="text-2xl font-bold text-gray-700">รายการข้อเสนอแนะ</h1>
+    </div>
+
+    {# 🔴 แก้ไข: เพิ่ม ID และ Hidden Input สำหรับ Group/Point เพื่อรองรับ Dropdown แบบมีเงื่อนไข (Conditional Dropdown) #}
+    <form method="GET" id="filterForm" class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-6 flex flex-wrap gap-4 items-end">
+        <input type="hidden" name="group_id" id="hidden_group_id" value="{{ selected_group }}">
+        <input type="hidden" name="point_id" id="hidden_point_id" value="{{ selected_point }}">
+
+        <div class="w-full md:w-64">
+            <label class="block text-xs font-semibold text-gray-500 mb-1">ค้นหาข้อความ</label>
+            <input type="text" name="q" value="{{ search_query }}" placeholder="พิมพ์คำค้นหา..." class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500">
+        </div>
+        
+        <div>
+            <label class="block text-xs font-semibold text-gray-500 mb-1">ช่วงเวลา</label>
+            <div class="flex items-center gap-2">
+                <input type="date" name="start_date" value="{{ start_date }}" class="p-2 border border-gray-300 rounded-lg text-sm text-gray-600">
+                <span class="text-gray-400">-</span>
+                <input type="date" name="end_date" value="{{ end_date }}" class="p-2 border border-gray-300 rounded-lg text-sm text-gray-600">
+            </div>
+        </div>
+        
+        {# 🔴 เพิ่ม Group Filter #}
+        <div>
+            <label class="block text-xs font-semibold text-gray-500 mb-1">กลุ่มภารกิจ</label>
+            <select id="group_filter" onchange="updatePointDropdown(); syncInputs(false);" class="p-2 border border-gray-300 rounded-lg text-sm text-gray-600 w-48">
+                <option value="">ทั้งหมด</option>
+                {% for g in groups %}
+                    <option value="{{ g.id }}" {% if selected_group|slugify == g.id|slugify %}selected{% endif %}>{{ g.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div>
+            <label class="block text-xs font-semibold text-gray-500 mb-1">จุดบริการ</label>
+            {# 🔴 เปลี่ยน name/id เพื่อใช้ JavaScript จัดการ Dropdown แบบมีเงื่อนไข #}
+            <select id="point_filter" onchange="syncInputs(true);" class="p-2 border border-gray-300 rounded-lg text-sm text-gray-600 w-48 disabled:bg-gray-200 disabled:text-gray-400">
+                 <option value="">กรุณาเลือกกลุ่มภารกิจก่อน</option>
+                 {# Options จะถูก Populate ด้วย JavaScript #}
+            </select>
+        </div>
+
+        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg text-sm font-bold shadow transition">
+            ค้นหา
+        </button>
+        {# 🔴 แก้ไข URL ไปที่หน้าเริ่มต้น #}
+        <a href="{% url 'manager:suggestion_list' %}" class="text-gray-500 text-sm hover:text-gray-700 underline self-center">ล้างค่า</a>
+    </form>
+
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <table class="w-full text-left border-collapse table-fixed">
+            <thead>
+                <tr class="bg-blue-50 text-blue-700 text-sm font-bold border-b border-blue-100">
+                    <th class="p-4 w-1/2">ข้อเสนอแนะ</th>
+                    <th class="p-4 w-1/6">ผู้กรอก</th>
+                    <th class="p-4 w-1/6">จุดบริการ</th>
+                    <th class="p-4 w-1/12">เวลา</th>
+                    <th class="p-4 w-1/12 text-center">จัดการ</th>
+                </tr>
+            </thead>
+            <tbody class="text-sm text-gray-600 divide-y divide-gray-100">
+                {% for item in page_obj %}
+                <tr class="hover:bg-gray-50 transition group">
+                    <td class="p-4 align-top">
+                        <p class="text-gray-800 whitespace-pre-wrap break-words break-all">{{ item.answer_text }}</p>
+                    </td>
+                    <td class="p-4 align-top whitespace-nowrap">
+                        <span class="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs font-medium">{{ item.response.user_role|default:"ทั่วไป" }}</span>
+                    </td>
+                    <td class="p-4 align-top text-gray-500">
+                        <div class="font-medium text-gray-700 truncate" title="{{ item.response.service_point.name }}">{{ item.response.service_point.name }}</div>
+                        <div class="text-xs text-gray-400 truncate">{{ item.response.service_point.group.name }}</div>
+                    </td>
+                    <td class="p-4 align-top whitespace-nowrap text-gray-400">
+                        {# 🔴 แก้ไข: ใช้ item.response.submitted_at #}
+                        {{ item.response.submitted_at|date:"d M, H:i น." }}
+                    </td>
+                    <td class="p-4 align-top text-center">
+                        <button class="text-blue-500 hover:text-blue-700 p-1 rounded hover:bg-blue-50 transition" title="ดูรายละเอียด"
+                            {# 🔴 แก้ไข: ส่งค่า group และ point code เข้าไปด้วย #}
+                            onclick="openDetailModal(
+                                '{{ item.answer_text|escapejs }}', 
+                                '{{ item.response.user_role|default:"ทั่วไป" }}', 
+                                '{{ item.response.service_point.name|escapejs }} ({{ item.response.service_point.code }})', 
+                                '{{ item.response.submitted_at|date:"d M Y, H:i" }}'
+                            )">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                        </button>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="p-10 text-center text-gray-400">ไม่พบข้อเสนอแนะตามเงื่อนไข</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+        {% if page_obj.has_other_pages %}
+        <div class="p-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-2 text-sm">
+            {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                    <span class="px-3 py-1 bg-blue-600 text-white rounded-lg">{{ num }}</span>
+                {% else %}
+                    {# 🔴 แก้ไข: ส่ง query params ทั้งหมดที่เกี่ยวข้องไปใน Pagination link #}
+                    <a href="{% url 'manager:suggestion_list' %}?page={{ num }}&q={{ search_query }}&start_date={{ start_date }}&end_date={{ end_date }}&group_id={{ selected_group }}&point_id={{ selected_point }}" class="px-3 py-1 bg-white border rounded-lg hover:bg-gray-100 text-gray-700 transition">{{ num }}</a>
+                {% endif %}
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+
+<div id="detailModal" class="fixed inset-0 z-50 hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div class="flex items-center justify-center min-h-screen px-4 text-center sm:p-0">
+        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity backdrop-blur-sm" onclick="closeDetailModal()"></div>
+        <div class="relative bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:max-w-lg w-full p-6">
+            <div class="mb-4">
+                <h3 class="text-lg leading-6 font-bold text-gray-900">รายละเอียดข้อเสนอแนะ</h3>
+                <p class="text-sm text-gray-500 mt-1">จาก: <span id="modalUser" class="font-medium text-blue-600"></span> • <span id="modalPoint"></span></p>
+                <p class="text-xs text-gray-400" id="modalDate"></p>
+            </div>
+            <div class="bg-gray-50 p-5 rounded-xl border border-gray-200 max-h-60 overflow-y-auto">
+                <p class="text-gray-800 text-base leading-relaxed whitespace-pre-wrap break-words break-all" id="modalText"></p>
+            </div>
+            <div class="mt-6 flex justify-end">
+                <button type="button" onclick="closeDetailModal()" class="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition font-medium">ปิดหน้าต่าง</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 🔴 ข้อมูลจุดบริการทั้งหมดที่ Manager ดูแล (สร้าง Point Map ใน View หรือส่งมาใน Context)
+    // สำหรับตอนนี้เราไม่มีฟังก์ชัน _get_manager_point_map ให้ใช้งานโดยตรงในโค้ดที่คุณให้มา
+    // แต่เราสามารถสร้าง Point Map แบบง่ายๆ จาก 'groups' และ 'points' ที่ส่งมาจาก View ได้
+    const groupData = [
+        {% for g in groups %}
+            { id: {{ g.id }}, name: "{{ g.name|escapejs }}", points: [
+                {% for p in points %}
+                    {% if p.group_id == g.id %}
+                        { id: {{ p.id }}, name: "{{ p.name|escapejs }}" },
+                    {% endif %}
+                {% endfor %}
+            ] },
+        {% endfor %}
+    ];
+    
+    // แปลงให้เป็น Point Map: { groupId: [{ id, name }, ...] }
+    const pointMap = groupData.reduce((acc, group) => {
+        acc[group.id] = group.points;
+        return acc;
+    }, {});
+
+    const groupFilter = document.getElementById('group_filter');
+    const pointFilter = document.getElementById('point_filter');
+    const selectedPointId = "{{ selected_point }}";
+
+    function updatePointDropdown() {
+        const groupId = groupFilter.value;
+        pointFilter.innerHTML = ''; // Clear old options
+
+        if (groupId && pointMap[groupId]) {
+            pointFilter.disabled = false;
+            pointFilter.innerHTML = '<option value="">-- เลือกจุดบริการ --</option>';
+            
+            pointMap[groupId].forEach(point => {
+                const option = document.createElement('option');
+                option.value = point.id;
+                option.textContent = point.name;
+                // ตรวจสอบว่าจุดบริการนี้ถูกเลือกไว้ก่อนหน้าหรือไม่
+                if (point.id == selectedPointId) option.selected = true; 
+                pointFilter.appendChild(option);
+            });
+        } else {
+            pointFilter.disabled = true;
+            pointFilter.innerHTML = '<option value="">ทั้งหมด</option>';
+            // เมื่อเปลี่ยนกลุ่มเป็น 'ทั้งหมด' หรือล้างค่ากลุ่ม ให้ตั้งค่าจุดบริการเป็น 'ทั้งหมด' ด้วย
+            document.getElementById('hidden_point_id').value = ''; 
+        }
+    }
+
+    function syncInputs(shouldSubmit) {
+        document.getElementById('hidden_group_id').value = document.getElementById('group_filter').value;
+        // 🔴 ปรับปรุง: อัปเดต hidden_point_id จาก point_filter
+        document.getElementById('hidden_point_id').value = document.getElementById('point_filter').value;
+        
+        if (shouldSubmit) {
+            document.getElementById('filterForm').submit();
+        }
+    }
+
+    // === Modal Logic ===
+    function openDetailModal(text, user, point, date) {
+        document.getElementById('modalText').innerText = text;
+        document.getElementById('modalUser').innerText = user;
+        document.getElementById('modalPoint').innerText = point;
+        document.getElementById('modalDate').innerText = date;
+        document.getElementById('detailModal').classList.remove('hidden');
+    }
+
+    function closeDetailModal() {
+        document.getElementById('detailModal').classList.add('hidden');
+    }
+    
+    // Initialize
+    document.addEventListener('DOMContentLoaded', function() { 
+        updatePointDropdown(); 
+        
+        // ถ้ามีการเลือก Group ไว้แล้ว แต่ไม่ได้เปลี่ยน Point ให้ซิงค์ค่า Point ที่มีอยู่
+        if (groupFilter.value && selectedPointId) {
+             const pointsInGroup = pointMap[groupFilter.value];
+             if (pointsInGroup && pointsInGroup.some(p => p.id == selectedPointId)) {
+                pointFilter.value = selectedPointId;
+             }
+        }
+    });
+
+</script>
+{% endblock %}

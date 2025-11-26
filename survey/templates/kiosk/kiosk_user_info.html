@@ -1,10 +1,15 @@
+{% extends 'kiosk/base_kiosk.html' %} 
+{% load static i18n %}
 {% load static %}
+{% block title %}ยินดีต้อนรับ - {{ service_point.name }}{% endblock %}
+
+{% block content %}
 <!DOCTYPE html>
 <html lang="th">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ข้อมูลผู้รับบริการ - {{ service_point.name }}</title>
+    <title>{trans"ข้อมูลผู้รับบริการ -"} {{ service_point.name }}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
@@ -28,19 +33,8 @@
 </head>
 <body class="bg-gray-50 min-h-screen flex flex-col">
 
-    <!-- Header -->
-    <div class="header">
-        <div class="header-content">
-            <img src="{% static 'images/logo.png' %}" alt="Logo" class="header-logo">
-        </div>
-        <div class="settings-container">
-            <a class="settings-icon" id="settings-toggle"><svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 0 24 24" width="24"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.22-.08-.49 0-.61.22l-2 3.46c-.12.22-.07.49.12.64l2.11 1.65c-.04.32-.07.64-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.22.08.49 0 .61.22l2 3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5-3.5-1.57 3.5-3.5 3.5z"/></svg></a>
-            <a href="/login/" class="login-dropdown" id="login-dropdown">Login</a>
-        </div>
-    </div>
-
     <!-- Main Content -->
-    <main class="flex-grow container mx-auto p-4 max-w-3xl" style="padding-top: 120px;">
+    <main class="flex-grow container mx-auto p-4 max-w-3xl">
         
         <div class="bg-white rounded-xl shadow-xl overflow-hidden border border-gray-100">
             <div class="p-6 border-b border-gray-100 bg-gray-50">
@@ -50,9 +44,9 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                         </svg>
                     </span>
-                    ข้อมูลผู้รับบริการ
+                    {% trans "ข้อมูลผู้รับบริการ" %}
                 </h2>
-                <p class="text-gray-500 text-sm mt-2 ml-12">กรุณาเลือกข้อมูลที่ตรงกับตัวท่าน (จำเป็นทุกข้อ)</p>
+                <p class="text-gray-500 text-sm mt-2 ml-12">{% trans "กรุณาเลือกข้อมูลที่ตรงกับตัวท่าน (จำเป็นทุกข้อ)" %}</p>
             </div>
 
             <form method="POST" id="userInfoForm" class="p-6 space-y-8" novalidate>
@@ -60,7 +54,7 @@
 
                 <!-- 1. ท่านคือ -->
                 <div class="form-group transition-all duration-300" id="group-role">
-                    <label class="block text-gray-800 font-semibold mb-3 text-lg label-title">1. ท่านคือ <span class="text-red-500">*</span></label>
+                    <label class="block text-gray-800 font-semibold mb-3 text-lg label-title">{% trans "1. ท่านคือ" %} <span class="text-red-500">*</span></label>
                     <div class="grid grid-cols-2 gap-4 options-container p-1 rounded-xl border border-transparent">
                         <label class="cursor-pointer group">
                             <!-- [แก้ไข] เพิ่ม Logic เช็คค่าเดิม -->
@@ -70,7 +64,7 @@
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-gray-400 group-hover:text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                 </svg>
-                                <span class="text-lg font-medium">ผู้ป่วย</span>
+                                <span class="text-lg font-medium">{% trans "ผู้ป่วย" %}</span>
                             </div>
                         </label>
                         <label class="cursor-pointer group">
@@ -80,80 +74,91 @@
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-gray-400 group-hover:text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                                 </svg>
-                                <span class="text-lg font-medium">ญาติ / ผู้ติดตาม</span>
+                                <span class="text-lg font-medium">{% trans "ญาติ / ผู้ติดตาม" %}</span>
                             </div>
                         </label>
                     </div>
                     <p class="text-red-500 text-sm mt-2 hidden error-msg font-bold flex items-center gap-1">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
-                        กรุณาเลือกสถานะของท่าน
+                        {% trans "กรุณาเลือกสถานะของท่าน" %}
                     </p>
                 </div>
 
                 <!-- 2. เพศ -->
                 <div class="form-group transition-all duration-300" id="group-gender">
-                    <label class="block text-gray-800 font-semibold mb-3 text-lg label-title">2. เพศ <span class="text-red-500">*</span></label>
+                    <label class="block text-gray-800 font-semibold mb-3 text-lg label-title">{% trans "2. เพศ" %} <span class="text-red-500">*</span></label>
                     <div class="grid grid-cols-3 gap-3 options-container p-1 rounded-xl border border-transparent">
                         <label class="cursor-pointer">
                             <input type="radio" name="patient_gender" value="ชาย" class="radio-card hidden" required
                                    {% if request.session.patient_info.gender == "ชาย" %}checked{% endif %}>
                             <div class="border-2 border-gray-200 rounded-xl p-3 text-center hover-trigger transition card-content">
-                                <span class="block font-medium">ชาย</span>
+                                <span class="block font-medium">{% trans "ชาย" %}</span>
                             </div>
                         </label>
                         <label class="cursor-pointer">
                             <input type="radio" name="patient_gender" value="หญิง" class="radio-card hidden" required
                                    {% if request.session.patient_info.gender == "หญิง" %}checked{% endif %}>
                             <div class="border-2 border-gray-200 rounded-xl p-3 text-center hover-trigger transition card-content">
-                                <span class="block font-medium">หญิง</span>
+                                <span class="block font-medium">{% trans "หญิง" %}</span>
                             </div>
                         </label>
                         <label class="cursor-pointer">
                             <input type="radio" name="patient_gender" value="ไม่ระบุ" class="radio-card hidden" required
                                    {% if request.session.patient_info.gender == "ไม่ระบุ" %}checked{% endif %}>
                             <div class="border-2 border-gray-200 rounded-xl p-3 text-center hover-trigger transition card-content">
-                                <span class="block font-medium text-gray-500">ไม่ระบุ</span>
+                                <span class="block font-medium text-gray-500">{% trans "ไม่ระบุ" %}</span>
                             </div>
                         </label>
                     </div>
                     <p class="text-red-500 text-sm mt-2 hidden error-msg font-bold flex items-center gap-1">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
-                        กรุณาเลือกเพศ
+                        {% trans "กรุณาเลือกเพศ" %}
                     </p>
                 </div>
 
                 <!-- 3. ช่วงอายุ -->
                 <div class="form-group transition-all duration-300" id="group-age">
-                    <label class="block text-gray-800 font-semibold mb-3 text-lg label-title">3. ช่วงอายุ <span class="text-red-500">*</span></label>
+                    <label class="block text-gray-800 font-semibold mb-3 text-lg label-title">
+                        {% trans "3. ช่วงอายุ" %} <span class="text-red-500">*</span>
+                    </label>
+                    
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-3 options-container p-1 rounded-xl border border-transparent">
-                        {% for age in age_ranges %}
+                        
+                        {% for value, label in age_ranges %}
+                        
                         <label class="cursor-pointer">
-                            <input type="radio" name="age_range" value="{{ age }}" class="radio-card hidden" required
-                                   {% if request.session.patient_info.age_range == age %}checked{% endif %}>
+                            <input type="radio" name="age_range" value="{{ value }}" class="radio-card hidden" required
+                                {% if request.session.patient_info.age_range == value %}checked{% endif %}>
+                            
                             <div class="border-2 border-gray-200 rounded-xl p-3 text-center hover-trigger transition h-full flex items-center justify-center card-content">
-                                <span class="text-sm font-medium">{{ age }}</span>
+                                <span class="text-sm font-medium">{{ label }}</span>
                             </div>
                         </label>
+                        
                         {% endfor %}
+                        
                     </div>
+                    
                     <p class="text-red-500 text-sm mt-2 hidden error-msg font-bold flex items-center gap-1">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
-                        กรุณาเลือกช่วงอายุ
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                        </svg>
+                        {% trans "กรุณาเลือกช่วงอายุ" %}
                     </p>
                 </div>
 
                 <!-- 4. สิทธิการรักษา -->
                 <div class="form-group transition-all duration-300" id="group-benefit">
-                    <label class="block text-gray-800 font-semibold mb-3 text-lg label-title">4. สิทธิการรักษา <span class="text-red-500">*</span></label>
+                    <label class="block text-gray-800 font-semibold mb-3 text-lg label-title">{% trans "4. สิทธิการรักษา" %} <span class="text-red-500">*</span></label>
                     <div class="relative">
                         <select name="benefit_plan" id="benefit_plan" class="w-full p-4 pl-5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white appearance-none text-lg text-gray-700 cursor-pointer transition-colors duration-200" required>
-                            <option value="" disabled {% if not request.session.patient_info.benefit_plan %}selected{% endif %} class="text-gray-400">-- กรุณาเลือกสิทธิการรักษา --</option>
+                            <option value="" disabled {% if not request.session.patient_info.benefit_plan %}selected{% endif %} class="text-gray-400">{% trans "-- กรุณาเลือกสิทธิการรักษา --" %}</option>
                             
-                            <option value="บัตรทอง (UC)" {% if request.session.patient_info.benefit_plan == "บัตรทอง (UC)" %}selected{% endif %}>บัตรทอง (UC)</option>
-                            <option value="ประกันสังคม" {% if request.session.patient_info.benefit_plan == "ประกันสังคม" %}selected{% endif %}>ประกันสังคม</option>
-                            <option value="ข้าราชการ/รัฐวิสาหกิจ" {% if request.session.patient_info.benefit_plan == "ข้าราชการ/รัฐวิสาหกิจ" %}selected{% endif %}>ข้าราชการ / รัฐวิสาหกิจ</option>
-                            <option value="ชำระเงินเอง" {% if request.session.patient_info.benefit_plan == "ชำระเงินเอง" %}selected{% endif %}>ชำระเงินเอง</option>
-                            <option value="อื่นๆ" {% if request.session.patient_info.benefit_plan == "อื่นๆ" %}selected{% endif %}>อื่นๆ</option>
+                            <option value="บัตรทอง (UC)" {% if request.session.patient_info.benefit_plan == "บัตรทอง (UC)" %}selected{% endif %}>{% trans "บัตรทอง (UC)" %}</option>
+                            <option value="ประกันสังคม" {% if request.session.patient_info.benefit_plan == "ประกันสังคม" %}selected{% endif %}>{% trans "ประกันสังคม" %}</option>
+                            <option value="ข้าราชการ/รัฐวิสาหกิจ" {% if request.session.patient_info.benefit_plan == "ข้าราชการ/รัฐวิสาหกิจ" %}selected{% endif %}>{% trans "ข้าราชการ / รัฐวิสาหกิจ" %}</option>
+                            <option value="ชำระเงินเอง" {% if request.session.patient_info.benefit_plan == "ชำระเงินเอง" %}selected{% endif %}>{% trans "ชำระเงินเอง" %}</option>
+                            <option value="อื่นๆ" {% if request.session.patient_info.benefit_plan == "อื่นๆ" %}selected{% endif %}>{% trans "อื่นๆ" %}</option>
                         </select>
                         <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
                             <svg class="fill-current h-6 w-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
@@ -161,7 +166,7 @@
                     </div>
                     <p class="text-red-500 text-sm mt-2 hidden error-msg font-bold flex items-center gap-1">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
-                        กรุณาเลือกสิทธิการรักษา
+                        {% trans "กรุณาเลือกสิทธิการรักษา" %}
                     </p>
                 </div>
 
@@ -171,10 +176,10 @@
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                             <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd" />
                         </svg>
-                        ย้อนกลับ
+                        {% trans "ย้อนกลับ" %}
                     </a>
                     <button type="submit" id="submitBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-10 rounded-full shadow-lg transform transition hover:scale-105 hover:shadow-xl flex items-center gap-3 text-lg">
-                        ถัดไป
+                        {% trans "ถัดไป" %}
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
                             <path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd" />
                         </svg>
@@ -184,10 +189,6 @@
             </form>
         </div>
     </main>
-
-    <footer class="bg-gray-100 text-center py-6 text-gray-400 text-xs">
-        &copy; {% now "Y" %} Trakan Phuet Phon Hospital | ระบบประเมินความพึงพอใจ
-    </footer>
 
     <script>
         // Header Script
@@ -297,3 +298,5 @@
     </script>
 </body>
 </html>
+
+{% endblock %}

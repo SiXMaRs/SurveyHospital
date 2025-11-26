@@ -38,8 +38,10 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'rest_framework_simplejwt',
-    'survey',
     "django_browser_reload",
+    'survey',
+    'manager',
+    'modeltranslation',
 ]
 
 MIDDLEWARE = [
@@ -51,20 +53,27 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     "django_browser_reload.middleware.BrowserReloadMiddleware",
+    'django.middleware.locale.LocaleMiddleware',
 ]
 
 ROOT_URLCONF = 'survey_hos.urls'
 
+import os
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [
+            os.path.join(BASE_DIR, 'templates'),
+            os.path.join(BASE_DIR, 'manager', 'templates'), # <--- ใส่บรรทัดนี้เพิ่มเข้าไปครับ!
+        ],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'survey.context_processors.notifications',
+                'django.template.context_processors.i18n',
             ],
         },
     },
@@ -139,3 +148,32 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 STATICFILES_DIRS = [
     BASE_DIR / 'static',
 ]   
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'       # เช่น 'smtp.gmail.com' หรือ 'smtp.office365.com'
+EMAIL_PORT = 587                    # พอร์ตมาตรฐาน
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'wuttinan.lu.65@ubu.ac.th' # อีเมลที่ใช้ส่ง
+EMAIL_HOST_PASSWORD = 'sbcl rcae gbyt wdsn' # รหัสผ่านหรือ App Password
+DEFAULT_FROM_EMAIL = 'Survey Hospital Alert <your_alert_email@hospital.com>'
+
+
+LINE_CHANNEL_ACCESS_TOKEN = 'Q9qgDx82kKnRm48G/wTVmrFIKoDrIaN3d/0f0aEsl2LyrcDZoU3x4jWuShgI2/jtTe3Vd5bNJmIicgoyASeOQIkioOvoTcu3/p2wYlj3+n5jFlWVRUvOjjXUwjwJBF9dsblrr0171+3ZevUb9pZnUQdB04t89/1O/w1cDnyilFU='
+LINE_ADMIN_RECIPIENT_ID = 'U1139a44d8fde0b4ef010f6f70f136eb2'
+FULL_DOMAIN = "http://127.0.0.1:8000"
+
+from django.utils.translation import gettext_lazy as _
+LANGUAGES = [
+    ('th', _('Thai')),
+    ('en', _('English')),
+]
+
+# โฟลเดอร์สำหรับเก็บไฟล์แปล (Optional: ถ้าจะแปลข้อความ Static)
+import os
+LOCALE_PATHS = [
+    os.path.join(BASE_DIR, 'locale'),
+]
+
+# Modeltranslation Settings
+MODELTRANSLATION_DEFAULT_LANGUAGE = 'th'
+MODELTRANSLATION_FALLBACK_LANGUAGES = ('th', 'en')

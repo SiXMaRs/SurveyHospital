@@ -1,4 +1,5 @@
 import logging 
+from django.http import JsonResponse
 from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import reverse, reverse_lazy
 from django.core.paginator import Paginator
@@ -6,20 +7,19 @@ from django.views.generic import ListView, CreateView, UpdateView, TemplateView,
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.auth.decorators import login_required,user_passes_test
 from django.utils import timezone 
+from django.utils.timesince import timesince
 from django.contrib import messages
 from django.db.models import Count, Q , Avg
 from django.db import transaction
 from django.contrib.auth.models import User, Group 
 from django.contrib.sessions.models import Session
 from django.http import HttpResponse
+from django.conf import settings
 from datetime import timedelta , datetime
 from openpyxl.utils import get_column_letter
-# Import แบบ Explicit เพื่อป้องกัน NameError
-from .forms import (
-    SurveyForm, QuestionForm, ServiceGroupForm, ServicePointForm, 
-    ManagerCreateForm, ManagerEditForm
-)
+from .forms import *
 from .models import * 
+from .utils import *
 import openpyxl
 import csv
 import json
@@ -27,6 +27,15 @@ import json
 # สร้าง Logger Instance
 logger = logging.getLogger(__name__)
 
+@login_required
+def after_login_view(request):
+    user = request.user  
+    if user.is_superuser:
+        # ถ้าเป็น Admin -> ไป Dashboard ใหญ่
+        return redirect('survey:dashboard')
+    else:
+        # ถ้าเป็น Manager (คนทั่วไป) -> ไป Dashboard ส่วนตัว
+        return redirect('manager:dashboard')
 # --- Auxiliary Functions ---
 
 def is_superuser(user):
@@ -51,13 +60,11 @@ def _get_point_map():
     return point_map
 
 # --- Mixins ---
-
 class SuperuserRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
     def test_func(self):
         return self.request.user.is_superuser
 
 # --- General Views ---
-
 @login_required
 def index(request):
     return render(request, "index.html")
@@ -65,8 +72,7 @@ def index(request):
 def Home(request) :
     return render(request, 'survey/home.html')
 
-# --- Dashboard View ---
-
+# --- Dashboard View --
 @login_required
 def dashboard_view(request):
     user = request.user
@@ -172,12 +178,10 @@ def dashboard_view(request):
     return render(request, 'survey/dashboard.html', context)
 
 # ========== 1. Service Point Views (จุดบริการ) ==========
-
 @login_required
 @user_passes_test(is_superuser)
 def service_point_list_view(request):
     queryset = ServicePoint.objects.select_related('group').prefetch_related('managers').order_by('code')
-    
     search_query = request.GET.get('q', '')
     group_id = request.GET.get('group_id', '')
 
@@ -311,7 +315,7 @@ def service_group_delete_view(request, pk):
         messages.error(request, f'เกิดข้อผิดพลาดในการลบ: {e}')
     return redirect('survey:service_point_list')
 
-##ส่วนเพิ่มผู้ดูแล
+##-----------ส่วนเพิ่มผู้ดูแล-----------------------
 def get_manager_summary_context():
     manager_query = User.objects.filter(is_superuser=False)
     total_managers = manager_query.count()
@@ -425,8 +429,8 @@ def manager_delete_view(request, pk):
         messages.error(request, f'เกิดข้อผิดพลาด: {e}')
     return redirect('survey:manager_list')
 
-# --- CRUD: Survey ---
 
+# --- CRUD: Survey ---
 @login_required
 @user_passes_test(is_superuser)
 def survey_list_view(request):
@@ -452,12 +456,11 @@ def survey_list_view(request):
             survey.save()
             
             messages.success(request, "สร้างแบบสอบถามเรียบร้อยแล้ว")
-            return redirect('survey:survey_list') # Refresh หน้าเพื่อเคลียร์ Form
+            return redirect('survey:survey_list')
         else:
-            show_modal = True # ถ้า Error ให้เปิด Modal ค้างไว้
+            show_modal = True
             messages.error(request, "เกิดข้อผิดพลาด กรุณาตรวจสอบข้อมูล")
     else:
-        # เตรียมฟอร์มเปล่า
         form = SurveyForm()
 
     # 3. เตรียม Context (รวมถึง JSON Map สำหรับ Dropdown)
@@ -471,62 +474,88 @@ def survey_list_view(request):
 
     return render(request, 'survey/survey_list.html', context)
 
+@login_required
+@user_passes_test(is_superuser)
+def survey_edit_view(request, pk):
+    original_survey = get_object_or_404(Survey, pk=pk)
 
-class SurveyUpdateView(SuperuserRequiredMixin, UpdateView):
-    model = Survey
-    form_class = SurveyForm
-    template_name = 'survey/survey_form.html' 
-    success_url = reverse_lazy('survey:survey_list')
+    if request.method == 'POST':
+        # 🔴 สำคัญ: ส่ง instance เข้าไปเพื่อให้ Form รู้ว่ากำลังแก้ไขตัวไหน
+        form = SurveyForm(request.POST, instance=original_survey)
+        
+        if form.is_valid():
+            changed_data = form.changed_data
+            new_status = form.cleaned_data.get('status')
+            new_service_point = form.cleaned_data.get('service_point')
+            
+            # --- 🔴 STEP 1: CONSTRAINT CHECK (1 ACTIVE SURVEY PER SERVICE POINT) ---
+            if new_status == 'ACTIVE':
+                # ตรวจสอบว่ามีแบบสอบถามอื่น (ที่ไม่ใช่ตัวปัจจุบัน) ที่ Active อยู่แล้วหรือไม่
+                if Survey.objects.filter(
+                    service_point=new_service_point,
+                    status='ACTIVE'
+                ).exclude(pk=original_survey.pk).exists():
+                    
+                    messages.error(request, f"ไม่สามารถเปิดใช้งานได้: จุดบริการ **'{new_service_point.name}'** มีแบบสอบถามที่เปิดใช้งานอยู่แล้ว กรุณาเปลี่ยนสถานะของแบบสอบถามอื่นก่อน")
+                    return redirect('survey:survey_list')
 
-    # === Logic แก้ไขค่าสถานะก่อนโหลดฟอร์ม (พร้อม Logger) ===
-    def get_object(self, queryset=None):
-        obj = super().get_object(queryset)
-        
-        valid_statuses = [choice[0] for choice in Survey.Status.choices]
-        safe_status = Survey.Status.DRAFT
-        
-        # --- DEBUG LOGGING START ---
-        logger.warning(f"\n--- SurveyUpdateView Debug (PK: {obj.pk}) ---")
-        logger.warning(f"1. Status loaded from DB: '{obj.status}' (Type: {type(obj.status)})")
-        logger.warning(f"2. Valid choices: {valid_statuses}")
-        # --- DEBUG LOGGING END ---
-        
-        is_invalid = obj.status not in valid_statuses
-        
-        if obj.status is None or obj.status == '' or is_invalid:
-            logger.warning(f"3. Correction triggered! Invalid status. Original: '{obj.status}'")
-            obj.status = safe_status
-            try:
-                obj.save(update_fields=['status']) 
-                messages.warning(self.request, f"สถานะเดิม ({obj.status}) ไม่ถูกต้อง แก้ไขเป็น '{safe_status}'")
-                logger.warning(f"4. Status corrected to: '{safe_status}'")
-            except Exception as e:
-                logger.error(f"FATAL ERROR: Could not correct status. Error: {e}") 
+            # --- STEP 2: APPLY SAVE LOGIC ---
+            
+            # CASE A: Change only Status -> Update In-place (ไม่ต้องสร้างเวอร์ชันใหม่)
+            if len(changed_data) == 1 and 'status' in changed_data:
+                form.save()
+                messages.success(request, "อัปเดตสถานะเรียบร้อยแล้ว (ไม่สร้างเวอร์ชันใหม่)")
+            
+            # CASE C: Change Content (หรืออื่นๆ) -> Create New Version
+            else:
+                try:
+                    with transaction.atomic():
+                        
+                        # 2.1 [Optional Cleanup] ถ้าเวอร์ชันใหม่เป็น ACTIVE, ควรกำหนดให้เวอร์ชันเดิมเป็น DRAFT
+                        #    (เพื่อทำความสะอาดประวัติ/ป้องกันความสับสน แม้ว่า Constraint จะจัดการแล้วก็ตาม)
+                        if new_status == 'ACTIVE':
+                             Survey.objects.filter(pk=original_survey.pk).update(status='DRAFT')
+
+                        # 2.2 สร้าง Survey Object ใหม่
+                        new_survey = form.save(commit=False)
+                        new_survey.pk = None 
+                        
+                        # Version logic
+                        current_ver = float(original_survey.version_number or 0)
+                        new_survey.version_number = f"{int(current_ver) + 1}.0"
+                        
+                        new_survey.save()
+
+                        # 2.3 Clone Questions
+                        old_questions = original_survey.questions.all().order_by('order')
+                        new_questions = [
+                            Question(
+                                survey=new_survey,
+                                text_th=q.text_th,
+                                text_en=q.text_en,
+                                question_type=q.question_type,
+                                order=q.order,
+                                is_required=q.is_required
+                            ) for q in old_questions
+                        ]
+                        Question.objects.bulk_create(new_questions)
+
+                    messages.success(request, f"บันทึกเวอร์ชันใหม่ (v{new_survey.version_number}) เรียบร้อยแล้ว")
+
+                except Exception as e:
+                    messages.error(request, f"เกิดข้อผิดพลาด: {e}")
+            
+            return redirect('survey:survey_list')
         else:
-            logger.warning("3. Status is valid.")
-
-        return obj
-
-    def form_valid(self, form):
-        messages.success(self.request, "แก้ไขข้อมูลเรียบร้อยแล้ว")
-        return super().form_valid(form)
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['page_title'] = f"แก้ไข: {self.object.title_th}"
-        context['btn_text'] = "บันทึกการแก้ไข"
-        context['cancel_url'] = reverse_lazy('survey:survey_list')
-        context['point_map_json'] = json.dumps(_get_point_map())
-        return context
+            messages.error(request, "ข้อมูลไม่ถูกต้อง")
     
+    return redirect('survey:survey_list')
+
 class SurveyDeleteView(SuperuserRequiredMixin, DeleteView):
     model = Survey
-    template_name = 'survey/survey_confirm_delete.html'
     success_url = reverse_lazy('survey:survey_list')
 
-
 # --- Question Views ---
-
 @login_required
 @user_passes_test(lambda u: u.is_superuser)
 def question_list_view(request, survey_id):
@@ -565,17 +594,12 @@ def question_list_view(request, survey_id):
 class QuestionUpdateView(SuperuserRequiredMixin, UpdateView):
     model = Question
     form_class = QuestionForm
-    # ไม่ต้องใช้ template_name แล้วเพราะเราจะ redirect กลับ
-    # template_name = 'survey/question_form.html' 
     
     def form_valid(self, form):
         messages.success(self.request, "แก้ไขคำถามเรียบร้อยแล้ว")
         return super().form_valid(form)
 
     def form_invalid(self, form):
-        # กรณี Error เราต้อง Redirect กลับไปหน้า List พร้อม Error (ยากนิดนึงถ้าไม่ใช้ AJAX)
-        # แต่วิธีง่ายสุดคือให้มัน Render หน้า List เดิม แต่เปิด Modal
-        # เพื่อความง่าย เราจะใช้การ Redirect กลับไปหน้า List แล้วแจ้งเตือน
         messages.error(self.request, "เกิดข้อผิดพลาดในการแก้ไข กรุณาลองใหม่")
         return redirect('survey:question_list', survey_id=self.object.survey.id)
 
@@ -591,7 +615,6 @@ class QuestionDeleteView(SuperuserRequiredMixin, DeleteView):
         return reverse('survey:question_list', args=[self.object.survey.id])
 
 # --- Kiosk Views ---
-
 def kiosk_welcome_view(request, service_point_id):
     service_point = get_object_or_404(ServicePoint, id=service_point_id)
     
@@ -650,7 +673,7 @@ def kiosk_user_info_view(request, service_point_id):
 
     context = { 
         'service_point': service_point,
-        'age_ranges': age_ranges # ส่งค่าไป
+        'age_ranges': Response.AgeRange.choices,# ส่งค่าไป
     }
     return render(request, 'kiosk/kiosk_user_info.html', context)
 
@@ -706,7 +729,7 @@ def survey_submit_view(request, survey_id):
     service_point = get_object_or_404(ServicePoint, id=service_point_id)
     patient_info = request.session.get('patient_info', {})
 
-    # [แก้ไข] เพิ่ม submitted_at=timezone.now() เพื่อบันทึกเวลาปัจจุบัน
+    # 1. บันทึก Response
     response = Response.objects.create(
         survey=survey, 
         service_point=service_point,
@@ -716,15 +739,17 @@ def survey_submit_view(request, survey_id):
         benefit_plan_other=patient_info.get('benefit_plan_other'),
         age_range=patient_info.get('age_range'),
         gender=patient_info.get('gender'),
-        submitted_at=timezone.now() # <--- เพิ่มบรรทัดนี้!
+        submitted_at=timezone.localtime(timezone.now())
     )
 
+    # 2. บันทึก Answers
     for key, value in request.POST.items():
         if key.startswith('q-'):
             if not value: continue
             try:
                 question_id = key.split('-')[1]
                 question = Question.objects.get(id=question_id)
+                
                 if question.question_type == 'RATING_5':
                     ResponseAnswer.objects.create(
                         response=response, 
@@ -740,6 +765,90 @@ def survey_submit_view(request, survey_id):
             except (Question.DoesNotExist, ValueError): 
                 continue 
     
+    # ====================================================
+    # 🔔 3. LOGIC แจ้งเตือนเมื่อคะแนนต่ำ (< 2.5)
+    # ====================================================
+    
+    avg_score = response.answers.aggregate(avg=Avg('answer_rating'))['avg'] or 0
+    FULL_DOMAIN = settings.FULL_DOMAIN # ดึงค่า Domain จาก settings.py
+
+    # ตั้งเกณฑ์ที่ต้องการแจ้งเตือน (น้อยกว่า 2.5)
+    if avg_score > 0 and avg_score < 2.5:
+        
+        # A. หา Manager และ Admin ทั้งหมด
+        managers = list(User.objects.filter(managed_points=service_point))
+        admins = list(User.objects.filter(is_superuser=True))
+        recipients = set(managers + admins)
+        
+        # 📌 NEW: ดึงรายชื่ออีเมล Manager ทั้งหมด (สำหรับส่งอีเมลรวม)
+        manager_emails = [m.email for m in managers if m.email] 
+        
+        # ข้อความและลิงก์พื้นฐาน
+        line_title = f"⚠️ คะแนนต่ำผิดปกติ ({avg_score:.1f})"
+        line_message_base = f"จุดบริการ: {service_point.name}\nผู้ประเมิน: {response.user_role or 'ไม่ระบุ'}"
+        
+        
+        for user in recipients:
+            
+            # กำหนดลิงก์ปลายทางที่แตกต่างกัน
+            if user.is_superuser:
+                # ลิงก์สำหรับ Admin Portal
+                link = f"/survey/assessments/?survey_id={survey.id}&point_id={service_point.id}&popup=true"
+            else:
+                # ลิงก์สำหรับ Manager Dashboard/Response
+                link = f"/manager/response/?point_id={service_point.id}&score=1-2&popup=true"
+
+            # 1. สร้าง Notification ใน Database
+            Notification.objects.create(
+                recipient=user,
+                title=line_title,
+                message=line_message_base,
+                link=link
+            )
+
+            # 2. ส่ง LINE แจ้งเตือน Admin/Manager รายบุคคล (ถ้ามี Line ID)
+            try:
+                line_id = user.profile.line_user_id
+                if line_id:
+                    full_link = f"{FULL_DOMAIN}{link}"
+                    line_message = f"🚨 [แจ้งเตือนบุคคล]\n{line_title}\n{line_message_base}\n\nตรวจสอบ: {full_link}"
+                    send_line_push(line_message, line_id)
+            except UserProfile.DoesNotExist:
+                # ถ้าผู้ใช้ไม่มี Profile หรือ Line ID ให้ข้ามการส่ง LINE
+                pass
+                
+        # 3. ส่งแจ้งเตือนไปหา Admin กลาง (LINE)
+        admin_link = f"{FULL_DOMAIN}/survey/assessments/?survey_id={survey.id}&point_id={service_point.id}"
+        admin_line_alert = f"📢 [แจ้งเตือน Admin Portal]\n{line_title}\n{line_message_base}\n\nตรวจสอบ: {admin_link}"
+        
+        # สมมติว่า LINE_ADMIN_RECIPIENT_ID เป็น UID ของผู้รับคนกลางใน settings.py
+        send_line_push(admin_line_alert, settings.LINE_ADMIN_RECIPIENT_ID)
+
+
+        # ====================================================
+        # 📌 4. NEW: ส่ง EMAIL แจ้งเตือน Manager (ใช้รายชื่ออีเมลที่ดึงมาก่อนหน้านี้)
+        # ====================================================
+        if manager_emails:
+            email_subject = f"[ALERT] Survey Hospital: คะแนนต่ำ ({avg_score:.1f}) ที่ {service_point.name}"
+            email_body = (
+                f"เรียน ผู้จัดการทุกท่าน,\n\n"
+                f"ตรวจพบการประเมินคะแนนความพึงพอใจต่ำกว่า 2.5 คะแนน\n\n"
+                f"หัวข้อ: {line_title}\n"
+                f"คะแนนเฉลี่ยที่ได้: {avg_score:.1f} / 5.0\n"
+                f"จุดบริการ: {service_point.name}\n"
+                f"ผู้ประเมิน: {response.user_role or 'ไม่ระบุ'}\n"
+                f"เวลาที่ส่ง: {response.submitted_at.strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+                f"โปรดเข้าสู่ระบบเพื่อตรวจสอบรายละเอียด: {FULL_DOMAIN}/manager/response/?point_id={service_point.id}&score=1-2"
+            )
+            
+            send_email_alert(email_subject, email_body, manager_emails)
+        else:
+            print(f"🚨 ไม่พบ Manager ที่รับผิดชอบจุดบริการ {service_point.name} หรือไม่มีอีเมลสำหรับส่ง")
+        
+        # ====================================================
+
+    # ====================================================
+
     if 'patient_info' in request.session:
         del request.session['patient_info']
 
@@ -749,27 +858,47 @@ def survey_submit_view(request, survey_id):
 
 def get_filtered_data_for_export(request):
     user = request.user
+    
+    # 1. Base Security
     base_service_points = ServicePoint.objects.all()
     if user.is_authenticated and not user.is_superuser:
         managed_points = user.managed_points.all()
         base_service_points = base_service_points.filter(id__in=managed_points.values('id'))
+
+    # 2. Date Filter
     end_date_str = request.GET.get('end_date', timezone.now().strftime('%Y-%m-%d'))
     start_date_str = request.GET.get('start_date', (timezone.now() - timedelta(days=6)).strftime('%Y-%m-%d'))
+    
     try:
         start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
         end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
     except (ValueError, TypeError):
         start_date = (timezone.now() - timedelta(days=6)).date()
         end_date = timezone.now().date()
+        
     end_date_for_query = end_date + timedelta(days=1)
+
+    # 3. Apply Filters
     base_responses_filtered = Response.objects.filter(
         service_point__in=base_service_points,
         submitted_at__gte=start_date,
         submitted_at__lt=end_date_for_query
     )
+
+    # กรอง Group / Point / Score
+    group_id = request.GET.get('group_id')
+    point_id = request.GET.get('point_id')
+    
+    if group_id:
+        base_responses_filtered = base_responses_filtered.filter(service_point__group_id=group_id)
+    if point_id:
+        base_responses_filtered = base_responses_filtered.filter(service_point_id=point_id)
+
+    # 4. Return Queryset
     queryset = ResponseAnswer.objects.filter(
         response__in=base_responses_filtered
     ).select_related('response', 'response__service_point', 'question').order_by('response__submitted_at')
+    
     return queryset
 
 def export_responses_csv(request):
@@ -777,106 +906,159 @@ def export_responses_csv(request):
     response.write('\ufeff') 
     writer = csv.writer(response)
     writer.writerow(['Response ID', 'Service Point', 'Submitted At', 'Question (TH)', 'Question (EN)', 'Question Type', 'Answer Value'])
+    
     queryset = get_filtered_data_for_export(request)
+    
     for answer in queryset:
+        # --- [จุดที่แก้ 1] ดึงชื่อคำถามแบบปลอดภัย ---
+        q_th = getattr(answer.question, 'text_th', '')
+        q_en = getattr(answer.question, 'text_en', '')
+        
+        # --- [จุดที่แก้ 2] เช็คว่าคำตอบเป็น คะแนน หรือ ข้อความ ---
+        if answer.answer_rating is not None:
+            final_answer = answer.answer_rating
+        else:
+            final_answer = answer.answer_text
+
         writer.writerow([
-            answer.response.id, answer.response.service_point.name, answer.response.submitted_at.strftime('%Y-%m-%d %H:%M:%S'),
-            answer.question.text_content.get('th', ''), answer.question.text_content.get('en', ''),
-            answer.question.get_question_type_display(), answer.answer_value
+            answer.response.id, 
+            answer.response.service_point.name, 
+            answer.response.submitted_at.strftime('%Y-%m-%d %H:%M:%S'),
+            q_th, 
+            q_en,
+            answer.question.get_question_type_display(), 
+            final_answer # ใช้ตัวแปรที่คำนวณมา
         ])
     return response
 
 def export_responses_excel(request):
     queryset = get_filtered_data_for_export(request)
+    
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Responses"
+    
     headers = ['Response ID', 'Service Point', 'Submitted At', 'Question (TH)', 'Question (EN)', 'Question Type', 'Answer Value']
     ws.append(headers)
+    
     for col_num, header in enumerate(headers, 1):
         cell = ws.cell(row=1, column=col_num)
         cell.font = openpyxl.styles.Font(bold=True)
-        if col_num in [4, 5]: ws.column_dimensions[get_column_letter(col_num)].width = 40
-        else: ws.column_dimensions[get_column_letter(col_num)].width = 20
+        
+        # ปรับความกว้างตามความเหมาะสม
+        if col_num in [4, 5]: # ช่องคำถาม (ยาวหน่อย)
+            ws.column_dimensions[get_column_letter(col_num)].width = 40
+        elif col_num == 3: # [เพิ่มตรงนี้] ช่องวันที่ (Submitted At)
+            ws.column_dimensions[get_column_letter(col_num)].width = 25 
+        else: # ช่องอื่นๆ
+            ws.column_dimensions[get_column_letter(col_num)].width = 20
+            
     for answer in queryset:
         local_submitted_at = timezone.localtime(answer.response.submitted_at)       
         naive_submitted_at = local_submitted_at.replace(tzinfo=None)
+        
+        # --- [จุดที่แก้ 1] ดึงชื่อคำถามแบบปลอดภัย ---
+        q_th = getattr(answer.question, 'text_th', '')
+        q_en = getattr(answer.question, 'text_en', '')
+        
+        # --- [จุดที่แก้ 2] เช็คว่าคำตอบเป็น คะแนน หรือ ข้อความ ---
+        if answer.answer_rating is not None:
+            final_answer = answer.answer_rating
+        else:
+            final_answer = answer.answer_text
+
         ws.append([
-            answer.response.id, answer.response.service_point.name, naive_submitted_at, 
-            answer.question.text_content.get('th', ''), answer.question.text_content.get('en', ''),
-            answer.question.get_question_type_display(), answer.answer_value
+            answer.response.id, 
+            answer.response.service_point.name, 
+            naive_submitted_at, 
+            q_th, 
+            q_en,
+            answer.question.get_question_type_display(), 
+            final_answer # ใช้ตัวแปรที่คำนวณมา
         ])
+        
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', headers={'Content-Disposition': 'attachment; filename="survey_responses.xlsx"'})
     wb.save(response)
     return response
 
 @login_required
-@user_passes_test(is_superuser)
+@user_passes_test(is_superuser) # หรือเช็คตามสิทธิ์ของคุณ
 def assessment_results_view(request):
-    # 1. รับค่า Filter
+    user = request.user
+
+    # 1. รับค่า Filter จาก URL
     group_id = request.GET.get('group_id')
     point_id = request.GET.get('point_id')
-    score_filter = request.GET.get('score') # รับค่าช่วงคะแนน (เช่น "4-5")
+    score_filter = request.GET.get('score')
     
-    start_date_str = request.GET.get('start_date')
-    end_date_str = request.GET.get('end_date')
+    # --- [ส่วนสำคัญ 1] จัดการวันที่ให้เหมือน Export เป๊ะๆ ---
+    end_date_str = request.GET.get('end_date', timezone.now().strftime('%Y-%m-%d'))
+    start_date_str = request.GET.get('start_date', (timezone.now() - timedelta(days=6)).strftime('%Y-%m-%d'))
+    
+    try:
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+    except (ValueError, TypeError):
+        # ถ้าวันที่เพี้ยน ให้กลับไปใช้ค่า Default (7 วันล่าสุด)
+        start_date = (timezone.now() - timedelta(days=6)).date()
+        end_date = timezone.now().date()
+        # อัปเดต string ให้ตรงกับ date ที่ใช้จริง (เพื่อส่งกลับไปหน้าเว็บ)
+        start_date_str = start_date.strftime('%Y-%m-%d')
+        end_date_str = end_date.strftime('%Y-%m-%d')
 
-    # 2. Queryset เริ่มต้น & คำนวณคะแนนเฉลี่ย
-    responses = Response.objects.annotate(
+    end_date_for_query = end_date + timedelta(days=1)
+    # ----------------------------------------------------
+
+    # 2. Base Query (กรองตามสิทธิ์ก่อน)
+    base_service_points = ServicePoint.objects.all()
+    if user.is_authenticated and not user.is_superuser:
+        managed_points = user.managed_points.all()
+        base_service_points = base_service_points.filter(id__in=managed_points.values('id'))
+
+    # 3. สร้าง Queryset หลัก
+    responses = Response.objects.filter(
+        service_point__in=base_service_points,
+        submitted_at__gte=start_date,
+        submitted_at__lt=end_date_for_query
+    ).annotate(
         avg_score=Avg('answers__answer_rating')
     ).select_related('service_point', 'service_point__group').order_by('-submitted_at')
+
+    # 4. Apply Filters (กรองเพิ่มเติมตามที่เลือก)
+    if group_id:
+        responses = responses.filter(service_point__group_id=group_id)
     
-    # --- กรองตามคะแนน (Score Range) ---
+    if point_id:
+        responses = responses.filter(service_point_id=point_id)
+
     if score_filter:
         try:
             min_score, max_score = map(int, score_filter.split('-'))
             if max_score == 5:
-                # กรณี 4-5 ให้รวม 5 ด้วย (<= 5)
                 responses = responses.filter(avg_score__gte=min_score, avg_score__lte=max_score)
             else:
-                # กรณีอื่น เช่น 1-2 ให้เป็น 1 <= x < 2
                 responses = responses.filter(avg_score__gte=min_score, avg_score__lt=max_score)
         except ValueError:
             pass
-    # ---------------------------------
 
-    # กรองวันที่
-    if start_date_str and end_date_str:
-        try:
-            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
-            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
-            responses = responses.filter(submitted_at__date__range=[start_date, end_date])
-        except ValueError:
-            pass
-    
-    # กรองกลุ่ม/จุดบริการ
-    if group_id:
-        responses = responses.filter(service_point__group_id=group_id)
-    if point_id:
-        responses = responses.filter(service_point_id=point_id)
-
-    # 3. Stats
+    # 5. Stats & Pagination (ส่วนแสดงผล)
     total_assessments = responses.count()
-    total_suggestions = ResponseAnswer.objects.filter(
+    
+    # หา Suggestion (ต้อง filter ตาม responses ที่กรองมาแล้ว)
+    suggestion_queryset = ResponseAnswer.objects.filter(
         response__in=responses,
         question__question_type='TEXTAREA'
-    ).exclude(answer_text='').count()
+    ).exclude(answer_text='')
+    
+    total_suggestions = suggestion_queryset.count()
+    recent_suggestions = suggestion_queryset.select_related('response', 'response__service_point').order_by('-id')[:10]
 
-    # 4. Pagination
     paginator = Paginator(responses, 10) 
     page_obj = paginator.get_page(request.GET.get('page'))
 
-    # 5. Suggestions List
-    recent_suggestions = ResponseAnswer.objects.filter(
-        response__in=responses,
-        question__question_type='TEXTAREA'
-    ).exclude(answer_text='').select_related('response', 'response__service_point').order_by('-id')[:10]
-
-    # 6. Choices & Map
+    # 6. Prepare Context
     groups = ServiceGroup.objects.all()
-    # ไม่ต้องส่ง points ทั้งหมดแล้ว เพราะ JS จะจัดการตาม Group
-    # แต่ส่งไว้เผื่อกรณีไม่ได้เลือก Group (หรือจะใช้ JS โหลดทั้งหมดก็ได้)
-    points = ServicePoint.objects.all() 
+    points = ServicePoint.objects.all() # ส่งไปทั้งหมดเพื่อให้ JS จัดการ หรือจะกรองก็ได้
     
     context = {
         'page_title': 'ผลการประเมิน',
@@ -886,81 +1068,134 @@ def assessment_results_view(request):
         'recent_suggestions': recent_suggestions,
         'groups': groups,
         'points': points,
-        'point_map_json': json.dumps(_get_point_map()), # [สำคัญ] ส่ง Map ไปให้ JS
-        'selected_group': int(group_id) if group_id else '',
-        'selected_point': int(point_id) if point_id else '',
+        'point_map_json': json.dumps(_get_point_map()), 
+        # ส่งค่ากลับไปที่ Form (สำคัญมาก: ต้องส่งค่าที่ใช้จริงกลับไป)
+        'selected_group': int(group_id) if group_id and group_id.isdigit() else '',
+        'selected_point': int(point_id) if point_id and point_id.isdigit() else '',
         'selected_score': score_filter,
-        'start_date': start_date_str if start_date_str else '',
-        'end_date': end_date_str if end_date_str else '',
+        'start_date': start_date_str, # ส่ง string กลับไปให้ input date
+        'end_date': end_date_str,     # ส่ง string กลับไปให้ input date
     }
     return render(request, 'survey/assessment_results.html', context)
 
+def _get_base_response_queryset(user, start_date, end_date):
+    """
+    ฟังก์ชันภายใน: ดึงข้อมูล Response ตามสิทธิ์ User และช่วงเวลาเท่านั้น
+    """
+    # 1. กรองตามสิทธิ์ (User Permissions)
+    base_service_points = ServicePoint.objects.all()
+    if user.is_authenticated and not user.is_superuser:
+        managed_points = user.managed_points.all()
+        base_service_points = base_service_points.filter(id__in=managed_points.values('id'))
+    
+    # 2. Query พื้นฐาน
+    end_date_for_query = end_date + timedelta(days=1)
+    return Response.objects.filter(
+        service_point__in=base_service_points,
+        submitted_at__gte=start_date,
+        submitted_at__lt=end_date_for_query
+    )
 
-login_required
+
+@login_required
 @user_passes_test(is_superuser)
 def suggestion_list_view(request):
-    # 1. รับค่า Filter (เหมือนหน้า Assessment)
+    # 1. รับค่า Filter
     group_id = request.GET.get('group_id')
     point_id = request.GET.get('point_id')
+    search_query = request.GET.get('q', '')
+    
+    # --- ส่วนวันที่ (เหมือนเดิม) ---
+    default_end = timezone.now().date()
+    default_start = (timezone.now() - timedelta(days=30)).date()
     start_date_str = request.GET.get('start_date')
     end_date_str = request.GET.get('end_date')
-    search_query = request.GET.get('q', '')
 
-    # 2. Base Query: หาคำตอบที่เป็น TEXTAREA และไม่ว่าง
+    try:
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date() if start_date_str else default_start
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date() if end_date_str else default_end
+    except (ValueError, TypeError):
+        start_date = default_start
+        end_date = default_end
+
+    # 2. Base Query
     suggestions = ResponseAnswer.objects.filter(
         question__question_type='TEXTAREA'
     ).exclude(answer_text='').select_related(
-        'response', 
-        'response__service_point', 
-        'response__service_point__group'
+        'response', 'response__service_point', 'response__service_point__group'
     ).order_by('-response__submitted_at')
     
     # 3. Apply Filters
-    if start_date_str and end_date_str:
-        try:
-            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
-            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
-            suggestions = suggestions.filter(response__submitted_at__date__range=[start_date, end_date])
-        except ValueError:
-            pass
+    end_date_query = end_date + timedelta(days=1)
+    suggestions = suggestions.filter(response__submitted_at__gte=start_date, response__submitted_at__lt=end_date_query)
 
     if group_id:
         suggestions = suggestions.filter(response__service_point__group_id=group_id)
     if point_id:
         suggestions = suggestions.filter(response__service_point_id=point_id)
-    
     if search_query:
         suggestions = suggestions.filter(answer_text__icontains=search_query)
 
-    # 4. Pagination
-    paginator = Paginator(suggestions, 20) # หน้าละ 20 รายการ
+    # 4. Pagination (หน้าละ 10 รายการ)
+    paginator = Paginator(suggestions, 10)
     page_obj = paginator.get_page(request.GET.get('page'))
 
-    # 5. Choices for Filter
+    # 5. Context
     groups = ServiceGroup.objects.all()
-    points = ServicePoint.objects.all()
-    if group_id: points = points.filter(group_id=group_id)
-
+    # ไม่ต้อง query points ทั้งหมดแล้ว เพราะจะใช้ JSON map แทน
+    
     context = {
         'page_title': 'รายการข้อเสนอแนะทั้งหมด',
         'page_obj': page_obj,
         'groups': groups,
-        'points': points,
-        'selected_group': int(group_id) if group_id else '',
-        'selected_point': int(point_id) if point_id else '',
-        'start_date': start_date_str if start_date_str else '',
-        'end_date': end_date_str if end_date_str else '',
+        'point_map_json': json.dumps(_get_point_map()), # [สำคัญ] ส่ง Map ไปให้ JS
+        'selected_group': int(group_id) if group_id and group_id.isdigit() else '',
+        'selected_point': int(point_id) if point_id and point_id.isdigit() else '',
+        'start_date': start_date.strftime('%Y-%m-%d'),
+        'end_date': end_date.strftime('%Y-%m-%d'),
         'search_query': search_query,
     }
     return render(request, 'survey/suggestion_list.html', context)
 
-def _get_point_map():
-    """สร้างแผนที่ (JSON) ของ {Group: [Points]} สำหรับ Dropdown 2 ชั้น"""
-    point_map = {}
-    groups = ServiceGroup.objects.prefetch_related('service_points')
-    for group in groups:
-        point_map[group.id] = [
-            {'id': point.id, 'name': point.name}
-            for point in group.service_points.all().order_by('name') 
-        ]
-    return point_map
+@login_required
+def check_notifications(request):
+    unread_count = Notification.objects.filter(recipient=request.user, is_read=False).count()
+    notifs_qs = Notification.objects.filter(recipient=request.user).order_by('-created_at')
+    show_all = request.GET.get('all') == 'true'
+    
+    if show_all:
+        latest_notifs = notifs_qs[:50]
+    else:
+        latest_notifs = notifs_qs[:5]
+
+    has_more = notifs_qs.count() > 5
+
+    notif_list = []
+    for n in latest_notifs:
+        notif_list.append({
+            'id': n.id,
+            'title': n.title,
+            'message': n.message,
+            'read_url': reverse('survey:read_notification', args=[n.id]), 
+            'time_ago': timesince(n.created_at) + " ที่แล้ว",
+            'is_read': n.is_read
+        })
+    
+    return JsonResponse({
+        'unread_count': unread_count,
+        'notifications': notif_list,
+        'has_more': has_more 
+    })
+
+@login_required
+def mark_notification_read(request, notif_id):
+
+    notification = get_object_or_404(Notification, pk=notif_id, recipient=request.user)
+
+    if not notification.is_read:
+        notification.is_read = True
+        notification.save()
+
+    return redirect(notification.link if notification.link else 'manager:dashboard')
+
+
