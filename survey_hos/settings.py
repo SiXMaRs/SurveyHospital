@@ -162,6 +162,12 @@ LINE_CHANNEL_ACCESS_TOKEN = 'Q9qgDx82kKnRm48G/wTVmrFIKoDrIaN3d/0f0aEsl2LyrcDZoU3
 LINE_ADMIN_RECIPIENT_ID = 'U1139a44d8fde0b4ef010f6f70f136eb2'
 FULL_DOMAIN = "http://127.0.0.1:8000"
 
+# กำหนดอายุของ Session เป็นวินาที (8 ชั่วโมง)
+# 8 ชม. x 60 นาที x 60 วินาที = 28,800 วินาที
+SESSION_COOKIE_AGE = 8 * 60 * 60
+# (Optional 2) ครบ 8 ชม. จากตอนล็อกอิน ตัดทันที (แม้จะกำลังทำงานอยู่)
+SESSION_SAVE_EVERY_REQUEST = True
+
 from django.utils.translation import gettext_lazy as _
 LANGUAGES = [
     ('th', _('Thai')),
@@ -177,3 +183,4 @@ LOCALE_PATHS = [
 # Modeltranslation Settings
 MODELTRANSLATION_DEFAULT_LANGUAGE = 'th'
 MODELTRANSLATION_FALLBACK_LANGUAGES = ('th', 'en')
+

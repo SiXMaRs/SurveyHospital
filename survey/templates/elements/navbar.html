@@ -1,6 +1,7 @@
 {% load static %}
 
-<nav class="w-full p-4 bg-[#27693d] text-white flex items-center justify-between shadow-md z-20 relative flex-shrink-0">
+<nav class="w-full p-4 bg-[#27693d] text-white flex items-center justify-between shadow-md z-50 relative flex-shrink-0">
+    
     <div class="flex items-center space-x-4">
         <img src="{% static 'images/logo.png' %}" alt="Logo" class="h-16 w-auto ml-4 md:ml-10 transition hover:scale-105">
     </div>
@@ -18,11 +19,21 @@
             </button>
 
             <div id="notifDropdown" class="hidden absolute right-0 mt-3 w-80 bg-white rounded-xl shadow-xl overflow-hidden z-50 border border-gray-100 origin-top-right text-gray-800 ring-1 ring-black ring-opacity-5">
+                
                 <div class="py-3 px-4 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
                     <span class="text-sm font-bold text-gray-700">การแจ้งเตือน</span>
-                    <span id="notif-count-label" class="text-xs text-red-500 font-medium bg-red-50 px-2 py-0.5 rounded-full {% if unread_notifications_count == 0 %}hidden{% endif %}">
-                        {{ unread_notifications_count }} ใหม่
-                    </span>
+                    
+                    <div class="flex items-center gap-2">
+                        <button onclick="clearAllNotifications()" 
+                                class="text-xs text-red-500 font-medium hover:text-red-700 transition-colors p-1 rounded-md hover:bg-red-50" 
+                                title="ล้างการแจ้งเตือนทั้งหมด">
+                            ลบทั้งหมด
+                        </button>
+
+                        <span id="notif-count-label" class="text-xs text-red-500 font-medium bg-red-50 px-2 py-0.5 rounded-full {% if unread_notifications_count == 0 %}hidden{% endif %}">
+                            {{ unread_notifications_count }} ใหม่
+                        </span>
+                    </div>
                 </div>
                 
                 <div id="notif-list" class="max-h-64 overflow-y-auto custom-scrollbar">
@@ -40,7 +51,7 @@
         <div class="flex items-center gap-3 pl-4 border-l border-[#5da35d] ml-2">
             <div class="text-right hidden md:block">
                 <p class="text-sm font-bold leading-tight">{{ request.user.get_full_name|default:request.user.username }}</p>
-                <p class="text-xs text-green-200 font-medium">ผู้จัดการ</p>
+                <p class="text-xs text-green-200 font-medium">{% if request.user.is_superuser %}ผู้ดูแลระบบ{% else %}ผู้ใช้งาน{% endif %}</p>
             </div>
             <div class="relative group cursor-pointer">
                 <img src="https://api.dicebear.com/7.x/adventurer/svg?seed={{ request.user.username }}&backgroundColor=b6e3f4" alt="User Avatar" class="h-10 w-10 rounded-full border-2 border-white bg-white shadow-sm">
@@ -52,7 +63,6 @@
 </nav>
 
 <script>
-    // ตัวแปรจำสถานะว่ากดดูทั้งหมดหรือยัง
     let isExpanded = false;
 
     function toggleNotif() {
@@ -60,23 +70,42 @@
         if (dropdown) dropdown.classList.toggle('hidden');
     }
 
-    // ฟังก์ชันเมื่อกดปุ่ม "ดูทั้งหมด"
     function expandNotifications() {
-        isExpanded = true; // จำค่าไว้
-        updateNotifications(); // เรียกอัปเดตข้อมูลทันที
+        isExpanded = true;
+        updateNotifications();
+    }
+
+    // 🗑️ ฟังก์ชันลบแจ้งเตือน (ใช้ URL ของ Admin: survey:clear_all_notifications)
+    function clearAllNotifications() {
+        if (!confirm('ยืนยันการลบการแจ้งเตือนทั้งหมด?')) return;
+
+        fetch("{% url 'survey:clear_all_notifications' %}", {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                updateNotifications(); // รีเฟรชทันที
+            }
+        })
+        .catch(error => console.error('Error:', error));
     }
 
     window.addEventListener('click', function(e) {
         const btn = document.querySelector('button[onclick="toggleNotif()"]');
         const dropdown = document.getElementById('notifDropdown');
-        if (btn && dropdown && !btn.contains(e.target) && !dropdown.contains(e.target)) {
+        const clearBtn = document.querySelector('button[onclick="clearAllNotifications()"]');
+        
+        if (btn && dropdown && !btn.contains(e.target) && !dropdown.contains(e.target) && (!clearBtn || !clearBtn.contains(e.target))) {
             dropdown.classList.add('hidden');
         }
     });
 
-    // 🚀 MAIN SCRIPT
     function updateNotifications() {
-        // เช็คว่าต้องส่ง parameter all=true หรือไม่
         let url = "{% url 'survey:check_notifications' %}?t=" + new Date().getTime();
         if (isExpanded) {
             url += "&all=true";
@@ -90,7 +119,6 @@
                 const listContainer = document.getElementById('notif-list');
                 const footer = document.getElementById('notif-footer');
 
-                // 1. Update Badge
                 if (data.unread_count > 0) {
                     if(badge) { badge.classList.remove('hidden'); badge.innerText = data.unread_count; }
                     if(countLabel) { countLabel.classList.remove('hidden'); countLabel.innerText = data.unread_count + ' ใหม่'; }
@@ -99,8 +127,6 @@
                     if(countLabel) countLabel.innerText = '';
                 }
 
-                // 2. Update Footer Visibility
-                // แสดงปุ่ม "ดูทั้งหมด" เฉพาะเมื่อ: ยังไม่ขยาย AND มีข้อมูลมากกว่า 5 รายการ
                 if (footer) {
                     if (!isExpanded && data.has_more) {
                         footer.classList.remove('hidden');
@@ -109,14 +135,14 @@
                     }
                 }
 
-                // 3. Render List
                 if (listContainer) {
                     if (data.notifications && data.notifications.length > 0) {
                         let html = '';
                         data.notifications.forEach(function(notif) {
                             let dotClass = notif.is_read ? 'hidden' : 'animate-pulse';
-                            let bgClass = notif.is_read ? 'bg-white' : 'bg-green-50'; // ไฮไลท์พื้นหลังถ้ายังไม่อ่าน (Option)
+                            let bgClass = notif.is_read ? 'bg-white' : 'bg-green-50';
                             
+                            // 📌 ใช้ URL ปกติของ Admin (survey:read_notification)
                             html += '<a href="' + notif.read_url + '" class="block px-4 py-3 hover:bg-gray-50 border-b border-gray-100 transition duration-150 group ' + bgClass + '">';
                             html += '<div class="flex items-start">';
                             html += '<div class="flex-shrink-0 pt-1"><div class="w-2 h-2 bg-red-500 rounded-full ' + dotClass + '"></div></div>';

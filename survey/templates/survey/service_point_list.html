@@ -26,7 +26,7 @@
 
 
 {# --- Card 1: Service Points --- #}
-<div class="bg-white shadow-md rounded-lg p-6 mb-8">
+
     
     {# --- Filter Bar (เหมือนเดิม) --- #}
     <form method="GET" action="{% url 'survey:service_point_list' %}" class="mb-6">
@@ -59,6 +59,7 @@
         </div>
     </form>
 
+
     <div class="flex justify-between items-center mb-4">
         <h2 class="text-xl font-semibold text-gray-800">รายการจุดบริการ</h2>
         <a href="{% url 'survey:service_point_add' %}"
@@ -67,6 +68,7 @@
         </a>
     </div>
 
+<div class="bg-white shadow-md rounded-lg p-6 mb-8">
     {# --- Table 1: Service Points (เหมือนเดิม) --- #}
     <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200">
@@ -140,7 +142,6 @@
 
 
 {# --- (✨ Card 2: Service Groups (ย้ายมาไว้ข้างล่าง) ✨) --- #}
-<div class="bg-white shadow-md rounded-lg p-6">
     <div class="flex justify-between items-center mb-4">
         <h2 class="text-xl font-semibold text-gray-800">รายการกลุ่มภารกิจ</h2>
         <a href="{% url 'survey:service_group_add' %}"
@@ -148,7 +149,8 @@
             + เพิ่มกลุ่มภารกิจ
         </a>
     </div>
-
+    
+<div class="bg-white shadow-md rounded-lg p-6">
     {# --- Table 2: Service Groups --- #}
     <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200">

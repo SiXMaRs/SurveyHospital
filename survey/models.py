@@ -116,7 +116,7 @@ class Question(models.Model):
     """
     class QuestionType(models.TextChoices):
         RATING_5 = 'RATING_5', 'คะแนน 1-5 ดาว'
-        TEXTAREA = 'TEXTAREA', 'ข้อความ (หลายบรรทัด)'
+        TEXTAREA = 'TEXTAREA', 'ข้อความ'
 
     # (แก้ไข) ชี้ไปที่ 'Survey' (แทน 'SurveyVersion')
     survey = models.ForeignKey(

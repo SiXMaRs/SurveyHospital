@@ -37,25 +37,24 @@
         </div>
     </div>
     
-        <div class="p-6 border-b border-gray-100 flex flex-col md:flex-row justify-between items-center gap-4">
-            <h3 class="text-lg font-bold text-gray-700">รายชื่อทั้งหมด</h3>
-            
-            <form method="GET" class="w-full md:w-auto">
-                <div class="relative">
-                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
-                        </svg>
-                    </span>
-                    <input type="text" name="q" value="{{ search_query|default:'' }}" 
-                           class="w-full md:w-72 pl-10 pr-4 py-2 bg-gray-50 border-transparent focus:bg-white focus:border-blue-500 focus:ring-0 rounded-xl text-sm transition-all duration-200 placeholder-gray-400"
-                           placeholder="ค้นหาชื่อผู้ดูแล...">
-                </div>
-            </form>
-        </div>
+    <div class="p-6 border-b border-gray-100 flex flex-col md:flex-row justify-between items-center gap-4">
+        <h3 class="text-lg font-bold text-gray-700">รายชื่อทั้งหมด</h3>
+        
+        <form method="GET" class="w-full md:w-auto">
+            <div class="relative">
+                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+                    </svg>
+                </span>
+                <input type="text" name="q" value="{{ search_query|default:'' }}" 
+                       class="w-full md:w-72 pl-10 pr-4 py-2 bg-gray-50 border-transparent focus:bg-white focus:border-blue-500 focus:ring-0 rounded-xl text-sm transition-all duration-200 placeholder-gray-400"
+                       placeholder="ค้นหาชื่อผู้ดูแล...">
+            </div>
+        </form>
+    </div>
 
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-50">
                 <thead class="bg-gray-50/50">
@@ -69,11 +68,19 @@
                 <tbody class="bg-white divide-y divide-gray-50">
                     {% for manager in managers %}
                     <tr class="hover:bg-gray-50 transition duration-150 group">
+                        
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="flex items-center">
-                                <div class="h-10 w-10 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center text-blue-600 font-bold text-sm shadow-sm border border-white">
-                                    {{ manager.username|slice:":1"|upper }}
+                                <div class="h-10 w-10 rounded-full shadow-sm border border-gray-200 overflow-hidden flex-shrink-0 bg-gray-100">
+                                    {% if manager.profile_image %}
+                                        <img src="{{ manager.profile_image.url }}" alt="{{ manager.username }}" class="h-full w-full object-cover">
+                                    {% else %}
+                                        <img src="https://api.dicebear.com/7.x/adventurer/svg?seed={{ manager.username }}&backgroundColor=b6e3f4,c0aede,d1d4f9" 
+                                             alt="Profile of {{ manager.username }}" 
+                                             class="h-full w-full object-cover">
+                                    {% endif %}
                                 </div>
+                                
                                 <div class="ml-4">
                                     <div class="text-sm font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
                                         {{ manager.get_full_name|default:manager.username }}
@@ -86,7 +93,6 @@
                                 </div>
                             </div>
                         </td>
-
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="text-sm text-gray-500">{{ manager.email|default:'-' }}</div>
                         </td>
@@ -136,7 +142,7 @@
         
         <div class="px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex justify-between items-center">
             <span class="text-xs text-gray-500">แสดงผล {{ managers|length }} รายการ</span>
-            </div>
+        </div>
     </div>
 
 </div>

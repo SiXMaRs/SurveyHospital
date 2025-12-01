@@ -14,7 +14,7 @@ class ManagerSurveyForm(forms.ModelForm):
         model = Survey
         # 2. ฟิลด์ที่ใช้: ตัด service_group และ version_number ออก (Version ค่อยไปเซ็ตใน View)
         fields = [
-            'title_th', 'title_en', 'description', 
+            'title_th', 'title_en', 'description', 'description_en', 
             'service_point', 'status'
         ]
         labels = {

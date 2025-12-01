@@ -3,7 +3,8 @@ from django.http import JsonResponse
 from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import reverse, reverse_lazy
 from django.core.paginator import Paginator
-from django.views.generic import ListView, CreateView, UpdateView, TemplateView, DeleteView
+from django.views.generic import *
+from django.contrib.auth import logout
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.auth.decorators import login_required,user_passes_test
 from django.utils import timezone 
@@ -37,6 +38,17 @@ def after_login_view(request):
         # ถ้าเป็น Manager (คนทั่วไป) -> ไป Dashboard ส่วนตัว
         return redirect('manager:dashboard')
 # --- Auxiliary Functions ---
+
+def custom_logout_view(request):
+    # 1. ล้างข้อมูลเซสชันอื่นๆ ที่กำหนดเอง (ถ้ามี)
+    if 'patient_info' in request.session:
+        del request.session['patient_info']
+    
+    # 2. ออกจากระบบ (ล้าง User Session และ Cookies)
+    logout(request) 
+    
+    # 3. เปลี่ยนเส้นทางไปยังหน้าหลัก
+    return redirect('homepage')
 
 def is_superuser(user):
     return user.is_superuser
@@ -78,17 +90,22 @@ def dashboard_view(request):
     user = request.user
     base_service_points = ServicePoint.objects.all()
     managers_list = User.objects.none() 
-    
+    base_service_points = ServicePoint.objects.none() # กำหนดค่าเริ่มต้นกันพลาด
+
     if user.is_authenticated:
         if not user.is_superuser:
+            # กรณี User ธรรมดา: ดูเฉพาะจุดที่ตัวเองดูแล
             base_service_points = user.managed_points.all()
             managers_list = User.objects.filter(id=user.id).prefetch_related('managed_points')
         else:
-            try:
-                managers_group = Group.objects.get(name='Managers') 
-                managers_list = managers_group.user_set.all().prefetch_related('managed_points')
-            except Group.DoesNotExist:
-                managers_list = User.objects.none()
+            # --- แก้ไขตรงนี้ (Superuser) ---
+            base_service_points = ServicePoint.objects.all()
+            
+            # วิธีเดิม: พึ่งพา Group 'Managers' (ถ้าไม่มี Group ข้อมูลจะไม่ขึ้น)
+            # วิธีใหม่: ดึง User ทุกคนที่มีความสัมพันธ์กับ managed_points (มีจุดบริการที่ดูแลอยู่อย่างน้อย 1 จุด)
+            managers_list = User.objects.filter(
+                managed_points__isnull=False
+            ).distinct().prefetch_related('managed_points')
 
     # A2: กรองตามวันที่ (Date Filter)
     today = timezone.now().date()
@@ -150,11 +167,10 @@ def dashboard_view(request):
     pie_data = [sp.response_count for sp in pie_data_all]
 
     recent_feedback = ResponseAnswer.objects.filter(
-        response__in=filtered_responses_for_charts_and_ticker, 
-        question__question_type='TEXTAREA'
+        response__in=filtered_responses_for_charts_and_ticker,
+        answer_text__isnull=False  # ต้องมีค่าในคอลัมน์นี้
     ).exclude(
-        Q(answer_rating__isnull=True) & 
-        (Q(answer_text__isnull=True) | Q(answer_text__exact=''))
+        answer_text__exact=''      # ต้องไม่ใช่ข้อความว่างเปล่า
     ).select_related(
         'response__service_point'
     ).order_by('-response__submitted_at')[:5]
@@ -191,7 +207,7 @@ def service_point_list_view(request):
     if group_id:
         queryset = queryset.filter(group_id=group_id)
 
-    paginator = Paginator(queryset, 20)
+    paginator = Paginator(queryset, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
@@ -352,28 +368,40 @@ def get_manager_summary_context():
 @login_required 
 @user_passes_test(is_superuser) 
 def manager_list_view(request):
+    # 1. รับค่า Filter
     query = request.GET.get('q', '')
-    manager_list_query = User.objects.filter(is_superuser=False).prefetch_related('managed_points').order_by('username')
+    status_filter = request.GET.get('status', '') # รับค่า status (online/offline)
+
+    # 2. Query Managers เบื้องต้น
+    managers_qs = User.objects.filter(is_superuser=False).prefetch_related('managed_points').order_by('username')
+
+    # 3. กรอง Search Query
     if query:
-        manager_list_query = manager_list_query.filter(
+        managers_qs = managers_qs.filter(
             Q(username__icontains=query) | Q(email__icontains=query)
         )
 
     sessions = Session.objects.filter(expire_date__gte=timezone.now())
-    online_user_ids = []
+    online_user_ids = set()
     for session in sessions:
         data = session.get_decoded()
-        user_id = data.get('_auth_user_id', None)
-        if user_id:
-            online_user_ids.append(int(user_id))
-    
-    online_user_ids = set(online_user_ids) 
+        uid = data.get('_auth_user_id')
+        if uid:
+            online_user_ids.add(int(uid))
+
+    if status_filter == 'online':
+        managers_qs = [m for m in managers_qs if m.id in online_user_ids]
+    elif status_filter == 'offline':
+        managers_qs = [m for m in managers_qs if m.id not in online_user_ids]
+
     context = {
-        'managers': manager_list_query, 
+        'managers': managers_qs, 
         'search_query': query,
+        'status_filter': status_filter, # ส่งค่ากลับไปแสดงใน Dropdown
         'online_user_ids': online_user_ids,
     }
     context.update(get_manager_summary_context()) 
+    
     return render(request, 'survey/manager_list.html', context)
 
 @login_required
@@ -434,42 +462,88 @@ def manager_delete_view(request, pk):
 @login_required
 @user_passes_test(is_superuser)
 def survey_list_view(request):
-    """
-    หน้าแสดงรายการแบบสอบถาม + Modal สำหรับสร้างใหม่
-    """
-    # 1. ดึงรายการ Survey ทั้งหมด
+    # 1. Queryset หลัก
+    # ใช้ .select_related เพื่อลดการ Query ฐานข้อมูล (optimization)
     surveys = Survey.objects.annotate(
         question_count=Count('questions')
-    ).select_related(
-        'service_point', 
-        'service_point__group'
-    ).order_by('-created_at')
+    ).select_related('service_point', 'service_point__group').order_by('-created_at')
 
-    show_modal = False # Flag ควบคุมการเปิด Modal (กรณี Error)
+    # --- 🔍 2. FILTER LOGIC ---
+    search_query = request.GET.get('q')
+    group_filter = request.GET.get('group')
+    point_filter = request.GET.get('point')
 
-    # 2. Handle การสร้าง Survey ใหม่ (POST)
+    if search_query:
+        surveys = surveys.filter(
+            Q(title_th__icontains=search_query) | 
+            Q(title_en__icontains=search_query)
+        )
+    if group_filter:
+        surveys = surveys.filter(service_point__group_id=group_filter)
+    if point_filter:
+        surveys = surveys.filter(service_point_id=point_filter)
+
+    # --- 📊 3. STATS (นับจากทั้งหมดในระบบ ไม่สน Filter) ---
+    total_surveys_count = Survey.objects.count()
+    active_surveys = Survey.objects.filter(status='ACTIVE').count()
+    draft_surveys = Survey.objects.filter(status='DRAFT').count()
+    total_questions = Question.objects.count()
+
+    # --- 📄 4. PAGINATION ---
+    paginator = Paginator(surveys, 5) # 👈 แสดงหน้าละ 5 รายการ
+    page_number = request.GET.get('page')
+    
+    try:
+        page_obj = paginator.get_page(page_number)
+    except PageNotAnInteger:
+        page_obj = paginator.page(1)
+    except EmptyPage:
+        page_obj = paginator.page(paginator.num_pages)
+
+    # --- 🛠️ 5. DROPDOWN DATA & POINT MAP (สำหรับ JavaScript) ---
+    groups = ServiceGroup.objects.all().order_by('name')
+    service_points = ServicePoint.objects.all().order_by('name')
+    
+    # สร้าง Map สำหรับให้ JS จัดการ Dropdown จุดบริการอัตโนมัติ (แก้ไขปัญหา ID)
+    point_map = {}
+    for g in groups:
+        # ใช้ related_name 'service_points' ที่ถูกกำหนดในโมเดล ServicePoint
+        points = g.service_points.all().order_by('name') 
+        point_map[g.id] = [{'id': p.id, 'name': p.name} for p in points]
+
+    # --- 📝 6. FORM & MODAL LOGIC ---
+    show_modal = False
     if request.method == 'POST':
         form = SurveyForm(request.POST)
         if form.is_valid():
             survey = form.save(commit=False)
             survey.created_by_user = request.user
             survey.save()
-            
             messages.success(request, "สร้างแบบสอบถามเรียบร้อยแล้ว")
-            return redirect('survey:survey_list')
+            return redirect('survey:survey_list') # 🚨 ปรับ URL name ให้ถูกต้อง
         else:
             show_modal = True
             messages.error(request, "เกิดข้อผิดพลาด กรุณาตรวจสอบข้อมูล")
     else:
         form = SurveyForm()
 
-    # 3. เตรียม Context (รวมถึง JSON Map สำหรับ Dropdown)
     context = {
-        'surveys': surveys,
+        'page_title': 'จัดการแบบสอบถาม',
+        'surveys': page_obj, 
         'form': form,
         'show_modal': show_modal,
-        'point_map_json': json.dumps(_get_point_map()), # ส่งแผนที่จุดบริการไปให้ JS
-        'page_title': 'จัดการแบบสอบถาม'
+        
+        # Stats
+        'total_surveys': total_surveys_count,
+        'active_surveys': active_surveys,
+        'draft_surveys': draft_surveys,
+        'total_questions': total_questions,
+        
+        # Dropdowns
+        'groups': groups,
+        'service_points': service_points,
+        # 📌 แปลง point_map เป็น JSON และส่งไปให้ Template
+        'point_map_json': json.dumps(point_map), 
     }
 
     return render(request, 'survey/survey_list.html', context)
@@ -504,7 +578,7 @@ def survey_edit_view(request, pk):
             # CASE A: Change only Status -> Update In-place (ไม่ต้องสร้างเวอร์ชันใหม่)
             if len(changed_data) == 1 and 'status' in changed_data:
                 form.save()
-                messages.success(request, "อัปเดตสถานะเรียบร้อยแล้ว (ไม่สร้างเวอร์ชันใหม่)")
+                messages.success(request, "อัปเดตสถานะเรียบร้อยแล้ว")
             
             # CASE C: Change Content (หรืออื่นๆ) -> Create New Version
             else:
@@ -856,130 +930,320 @@ def survey_submit_view(request, survey_id):
 
 # --- Export Views ---
 
-def get_filtered_data_for_export(request):
+def _get_base_filtered_responses(request):
+    """ฟังก์ชันกลางสำหรับกรอง Response ตาม User, Date, Group, Point"""
     user = request.user
     
-    # 1. Base Security
+    # 1.1 Permission Filter
     base_service_points = ServicePoint.objects.all()
     if user.is_authenticated and not user.is_superuser:
         managed_points = user.managed_points.all()
         base_service_points = base_service_points.filter(id__in=managed_points.values('id'))
 
-    # 2. Date Filter
-    end_date_str = request.GET.get('end_date', timezone.now().strftime('%Y-%m-%d'))
-    start_date_str = request.GET.get('start_date', (timezone.now() - timedelta(days=6)).strftime('%Y-%m-%d'))
+    # 1.2 Date Filter (Logic เดียวกับหน้าเว็บ)
+    default_end = timezone.now().date()
+    default_start = (timezone.now() - timedelta(days=30)).date()
     
-    try:
-        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
-        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
-    except (ValueError, TypeError):
-        start_date = (timezone.now() - timedelta(days=6)).date()
-        end_date = timezone.now().date()
-        
-    end_date_for_query = end_date + timedelta(days=1)
+    start_date_str = request.GET.get('start_date')
+    end_date_str = request.GET.get('end_date')
 
-    # 3. Apply Filters
-    base_responses_filtered = Response.objects.filter(
+    try:
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date() if start_date_str else default_start
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date() if end_date_str else default_end
+    except (ValueError, TypeError):
+        start_date = default_start
+        end_date = default_end
+
+    end_date_query = end_date + timedelta(days=1)
+
+    # 1.3 Query Responses
+    responses = Response.objects.filter(
         service_point__in=base_service_points,
         submitted_at__gte=start_date,
-        submitted_at__lt=end_date_for_query
+        submitted_at__lt=end_date_query
     )
 
-    # กรอง Group / Point / Score
+    # 1.4 Group & Point Filter
     group_id = request.GET.get('group_id')
     point_id = request.GET.get('point_id')
-    
-    if group_id:
-        base_responses_filtered = base_responses_filtered.filter(service_point__group_id=group_id)
-    if point_id:
-        base_responses_filtered = base_responses_filtered.filter(service_point_id=point_id)
 
-    # 4. Return Queryset
-    queryset = ResponseAnswer.objects.filter(
-        response__in=base_responses_filtered
-    ).select_related('response', 'response__service_point', 'question').order_by('response__submitted_at')
-    
-    return queryset
-
-def export_responses_csv(request):
-    response = HttpResponse(content_type='text/csv', headers={'Content-Disposition': 'attachment; filename="survey_responses.csv"'})
-    response.write('\ufeff') 
-    writer = csv.writer(response)
-    writer.writerow(['Response ID', 'Service Point', 'Submitted At', 'Question (TH)', 'Question (EN)', 'Question Type', 'Answer Value'])
-    
-    queryset = get_filtered_data_for_export(request)
-    
-    for answer in queryset:
-        # --- [จุดที่แก้ 1] ดึงชื่อคำถามแบบปลอดภัย ---
-        q_th = getattr(answer.question, 'text_th', '')
-        q_en = getattr(answer.question, 'text_en', '')
+    if group_id and group_id.isdigit():
+        responses = responses.filter(service_point__group_id=int(group_id))
+    if point_id and point_id.isdigit():
+        responses = responses.filter(service_point_id=int(point_id))
         
-        # --- [จุดที่แก้ 2] เช็คว่าคำตอบเป็น คะแนน หรือ ข้อความ ---
-        if answer.answer_rating is not None:
-            final_answer = answer.answer_rating
-        else:
-            final_answer = answer.answer_text
+    return responses
 
-        writer.writerow([
-            answer.response.id, 
-            answer.response.service_point.name, 
-            answer.response.submitted_at.strftime('%Y-%m-%d %H:%M:%S'),
-            q_th, 
-            q_en,
-            answer.question.get_question_type_display(), 
-            final_answer # ใช้ตัวแปรที่คำนวณมา
-        ])
-    return response
-
-def export_responses_excel(request):
-    queryset = get_filtered_data_for_export(request)
+def export_assessment_excel(request):
+    # 1. ใช้ Helper ดึงข้อมูลที่กรองแล้ว
+    responses = _get_base_filtered_responses(request)
     
+    # 2. ดึงคำตอบทั้งหมด (ทั้งคะแนนและข้อความ)
+    queryset = ResponseAnswer.objects.filter(response__in=responses)\
+        .select_related('response', 'response__service_point', 'question')\
+        .order_by('response__submitted_at')
+
+    # 3. สร้าง Excel
     wb = openpyxl.Workbook()
     ws = wb.active
-    ws.title = "Responses"
+    ws.title = "Assessment Data"
     
-    headers = ['Response ID', 'Service Point', 'Submitted At', 'Question (TH)', 'Question (EN)', 'Question Type', 'Answer Value']
+    headers = ['Response ID', 'Service Point', 'Submitted At', 'Role', 'Question', 'Answer (Rating/Text)']
     ws.append(headers)
     
-    for col_num, header in enumerate(headers, 1):
-        cell = ws.cell(row=1, column=col_num)
-        cell.font = openpyxl.styles.Font(bold=True)
-        
-        # ปรับความกว้างตามความเหมาะสม
-        if col_num in [4, 5]: # ช่องคำถาม (ยาวหน่อย)
-            ws.column_dimensions[get_column_letter(col_num)].width = 40
-        elif col_num == 3: # [เพิ่มตรงนี้] ช่องวันที่ (Submitted At)
-            ws.column_dimensions[get_column_letter(col_num)].width = 25 
-        else: # ช่องอื่นๆ
-            ws.column_dimensions[get_column_letter(col_num)].width = 20
-            
-    for answer in queryset:
-        local_submitted_at = timezone.localtime(answer.response.submitted_at)       
-        naive_submitted_at = local_submitted_at.replace(tzinfo=None)
-        
-        # --- [จุดที่แก้ 1] ดึงชื่อคำถามแบบปลอดภัย ---
-        q_th = getattr(answer.question, 'text_th', '')
-        q_en = getattr(answer.question, 'text_en', '')
-        
-        # --- [จุดที่แก้ 2] เช็คว่าคำตอบเป็น คะแนน หรือ ข้อความ ---
-        if answer.answer_rating is not None:
-            final_answer = answer.answer_rating
-        else:
-            final_answer = answer.answer_text
+    # จัดความกว้าง
+    ws.column_dimensions['B'].width = 30
+    ws.column_dimensions['C'].width = 22
+    ws.column_dimensions['E'].width = 50
+    ws.column_dimensions['F'].width = 20
 
-        ws.append([
-            answer.response.id, 
-            answer.response.service_point.name, 
-            naive_submitted_at, 
-            q_th, 
-            q_en,
-            answer.question.get_question_type_display(), 
-            final_answer # ใช้ตัวแปรที่คำนวณมา
-        ])
+    for ans in queryset:
+        local_time = timezone.localtime(ans.response.submitted_at).replace(tzinfo=None)
         
-    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', headers={'Content-Disposition': 'attachment; filename="survey_responses.xlsx"'})
+        # เลือกค่าที่จะแสดง (คะแนน หรือ ข้อความ)
+        val = ans.answer_rating if ans.answer_rating is not None else ans.answer_text
+        
+        ws.append([
+            ans.response.id,
+            ans.response.service_point.name,
+            local_time,
+            ans.response.user_role,
+            getattr(ans.question, 'text_th', ''),
+            val
+        ])
+
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename="assessment_data.xlsx"'
     wb.save(response)
     return response
+
+# ==========================================
+# PART B: Export สำหรับหน้า "ข้อเสนอแนะ" (เฉพาะ Comment)
+# ==========================================
+
+def export_suggestion_excel(request):
+    # 1. ใช้ Helper ดึงข้อมูลชุดเดียวกัน แต่กรองเฉพาะ Text
+    responses = _get_base_filtered_responses(request)
+    
+    # 2. กรองเอาเฉพาะข้อเสนอแนะ (TEXTAREA) และไม่เอาค่าว่าง
+    queryset = ResponseAnswer.objects.filter(
+        response__in=responses,
+        question__question_type='TEXTAREA'
+    ).exclude(answer_text='')\
+    .select_related('response', 'response__service_point')\
+    .order_by('response__submitted_at')
+
+    # 3. สร้าง Excel
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Suggestions"
+    
+    headers = ['Date/Time', 'Service Point', 'Group', 'User Role', 'Suggestion']
+    ws.append(headers)
+    
+    # จัดความกว้าง
+    ws.column_dimensions['A'].width = 22 # Date
+    ws.column_dimensions['B'].width = 30 # Point
+    ws.column_dimensions['C'].width = 25 # Group
+    ws.column_dimensions['E'].width = 60 # Suggestion (กว้างหน่อย)
+
+    for ans in queryset:
+        local_time = timezone.localtime(ans.response.submitted_at).replace(tzinfo=None)
+        
+        ws.append([
+            local_time,
+            ans.response.service_point.name,
+            ans.response.service_point.group.name,
+            ans.response.user_role,
+            ans.answer_text
+        ])
+
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename="suggestion_list.xlsx"'
+    wb.save(response)
+    return response
+
+def export_assessment_csv(request):
+    # 1. ใช้ Helper ตัวเดิม (เพื่อให้ Filter ตรงกับหน้าเว็บ)
+    responses = _get_base_filtered_responses(request)
+    
+    # 2. Query Data
+    queryset = ResponseAnswer.objects.filter(response__in=responses)\
+        .select_related('response', 'response__service_point', 'question')\
+        .order_by('response__submitted_at')
+
+    # 3. เตรียมไฟล์ CSV
+    response = HttpResponse(content_type='text/csv', headers={'Content-Disposition': 'attachment; filename="assessment_data.csv"'})
+    response.write('\ufeff') # สำคัญมาก! เพื่อให้ Excel อ่านภาษาไทยออก
+    
+    writer = csv.writer(response)
+    # Header
+    writer.writerow(['Response ID', 'Service Point', 'Submitted At', 'Role', 'Question', 'Answer (Rating/Text)'])
+    
+    # Loop Data
+    for ans in queryset:
+        # เลือกค่าที่จะแสดง
+        val = ans.answer_rating if ans.answer_rating is not None else ans.answer_text
+        
+        writer.writerow([
+            ans.response.id,
+            ans.response.service_point.name,
+            ans.response.submitted_at.strftime('%Y-%m-%d %H:%M:%S'),
+            ans.response.user_role,
+            getattr(ans.question, 'text_th', ''),
+            val
+        ])
+    return response
+
+def export_suggestion_csv(request):
+    # 1. ใช้ Helper ตัวเดิม
+    responses = _get_base_filtered_responses(request)
+    
+    # 2. Query เฉพาะข้อเสนอแนะ
+    queryset = ResponseAnswer.objects.filter(
+        response__in=responses,
+        question__question_type='TEXTAREA'
+    ).exclude(answer_text='')\
+    .select_related('response', 'response__service_point', 'response__service_point__group')\
+    .order_by('response__submitted_at')
+
+    # 3. เตรียมไฟล์ CSV
+    response = HttpResponse(content_type='text/csv', headers={'Content-Disposition': 'attachment; filename="suggestion_list.csv"'})
+    response.write('\ufeff') # BOM สำหรับภาษาไทย
+    
+    writer = csv.writer(response)
+    # Header
+    writer.writerow(['Date/Time', 'Service Point', 'Group', 'User Role', 'Suggestion'])
+    
+    # Loop Data
+    for ans in queryset:
+        writer.writerow([
+            ans.response.submitted_at.strftime('%Y-%m-%d %H:%M:%S'),
+            ans.response.service_point.name,
+            ans.response.service_point.group.name,
+            ans.response.user_role,
+            ans.answer_text
+        ])
+    return response
+
+
+def export_dashboard_summary(request):
+    """
+    ฟังก์ชัน Export Dashboard Summary (ฉบับแก้ไข: ดึง User ผู้ดูแลทุกคน ไม่จำกัดแค่ Staff)
+    """
+    
+    # 1. จัดการวันที่ (Header)
+    default_end = timezone.now().date()
+    default_start = (timezone.now() - timedelta(days=30)).date()
+    
+    req_start = request.GET.get('start_date')
+    req_end = request.GET.get('end_date')
+
+    show_start_date = req_start if req_start else default_start.strftime('%Y-%m-%d')
+    show_end_date = req_end if req_end else default_end.strftime('%Y-%m-%d')
+
+    # 2. ดึงข้อมูล Response (Filtered)
+    responses = _get_base_filtered_responses(request)
+
+    # --- KPI ---
+    total_responses = responses.count()
+    total_service_points = ServicePoint.objects.count()
+    active_questions = Question.objects.count()
+
+    # --- Top Service Points ---
+    sp_stats = responses.values('service_point__name')\
+        .annotate(total=Count('id'))\
+        .order_by('-total')
+
+    # --- Weekly Stats (Pure Python) ---
+    raw_datetimes = responses.values_list('submitted_at', flat=True)
+    weekly_stats = {}
+    
+    for dt in raw_datetimes:
+        if dt is None: continue
+        local_date = timezone.localtime(dt).date()
+        monday = local_date - timedelta(days=local_date.weekday())
+        if monday not in weekly_stats:
+            weekly_stats[monday] = 0
+        weekly_stats[monday] += 1
+
+    weekly_stats_list = [{'week': k, 'total': v} for k, v in weekly_stats.items()]
+    weekly_stats_list.sort(key=lambda x: x['week'])
+
+    # --- [จุดที่แก้ไข] รายชื่อผู้ดูแล ---
+    # เปลี่ยนเงื่อนไข: เอาเฉพาะ User ที่มี managed_points (อยู่ในตาราง servicepoint_manager)
+    admins = User.objects.filter(is_active=True, managed_points__isnull=False)\
+        .distinct()\
+        .prefetch_related('managed_points')
+
+    # 3. สร้าง Excel
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Dashboard Summary"
+
+    bold_font = Font(bold=True)
+    header_font = Font(bold=True, size=14)
+
+    # Header
+    ws.append(["รายงานสรุปผลการประเมิน (Dashboard Summary)"])
+    ws['A1'].font = header_font
+    ws.append([f"ช่วงเวลาข้อมูล: {show_start_date} ถึง {show_end_date}"])
+    ws.append([]) 
+
+    # Section 1
+    ws.append(["1. ภาพรวม (KPIs)"])
+    ws.cell(row=ws.max_row, column=1).font = bold_font
+    ws.append(["หัวข้อ", "จำนวน"])
+    ws.append(["จำนวนการตอบทั้งหมด", total_responses])
+    ws.append(["จำนวนจุดบริการทั้งหมด", total_service_points])
+    ws.append(["จำนวนคำถามทั้งหมด", active_questions])
+    ws.append([])
+
+    # Section 2
+    ws.append(["2. จำนวนการประเมินแยกตามจุดบริการ"])
+    ws.cell(row=ws.max_row, column=1).font = bold_font
+    ws.append(["ชื่อจุดบริการ", "จำนวนครั้ง"])
+    for item in sp_stats:
+        ws.append([item['service_point__name'], item['total']])
+    ws.append([])
+
+    # Section 3
+    ws.append(["3. สถิติรายสัปดาห์ (Weekly Trend)"])
+    ws.cell(row=ws.max_row, column=1).font = bold_font
+    ws.append(["สัปดาห์ (เริ่มวันจันทร์)", "จำนวนการประเมิน"])
+    if not weekly_stats_list:
+        ws.append(["ไม่พบข้อมูลในช่วงเวลานี้", "-"])
+    else:
+        for item in weekly_stats_list:
+            week_str = item['week'].strftime('%Y-%m-%d')
+            ws.append([week_str, item['total']])
+    ws.append([])
+
+    # Section 4
+    ws.append(["4. รายชื่อผู้ดูแลและจุดบริการที่รับผิดชอบ"])
+    ws.cell(row=ws.max_row, column=1).font = bold_font
+    ws.append(["ชื่อผู้ดูแล", "จุดบริการที่ดูแล"])
+    
+    for admin in admins:
+        # ดึงชื่อจุดบริการทั้งหมดที่ User คนนี้ดูแล
+        points_list = [p.name for p in admin.managed_points.all()]
+        points_str = ", ".join(points_list)
+        
+        admin_name = admin.get_full_name()
+        if not admin_name:
+            admin_name = admin.username
+            
+        ws.append([admin_name, points_str])
+
+    # Styling
+    ws.column_dimensions['A'].width = 45
+    ws.column_dimensions['B'].width = 60
+
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename="dashboard_summary.xlsx"'
+    wb.save(response)
+    return response
+
 
 @login_required
 @user_passes_test(is_superuser) # หรือเช็คตามสิทธิ์ของคุณ
@@ -1197,5 +1461,14 @@ def mark_notification_read(request, notif_id):
         notification.save()
 
     return redirect(notification.link if notification.link else 'manager:dashboard')
+
+
+from django.views.decorators.http import require_POST
+@login_required
+@require_POST
+def clear_all_notifications(request):
+    """ลบการแจ้งเตือนทั้งหมด (สำหรับ Admin)"""
+    Notification.objects.filter(recipient=request.user).delete()
+    return JsonResponse({'status': 'success'})
 
 

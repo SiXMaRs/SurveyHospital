@@ -16,11 +16,8 @@ urlpatterns = [
         template_name='survey/login.html',
         redirect_authenticated_user=True,
         next_page='after_login' 
-        
-    ), name='login'),
+        ), name='login'),
     path('after-login/', survey_views.after_login_view, name='after_login'),
 
-    path('logout/', auth_views.LogoutView.as_view(
-        next_page='homepage'
-    ), name='logout'),
+    path('logout/', survey_views.custom_logout_view, name='logout'),
 ]

@@ -9,13 +9,17 @@ app_name = 'survey'
 admin_urlpatterns = [
     # Survey CRUD
     path('surveys/', views.survey_list_view, name='survey_list'),
+    
     # path('surveys/add/', ...), # ลบออกแล้วเพราะใช้ Modal
     path('surveys/edit/<int:pk>/', views.survey_edit_view, name='survey_edit'),
     path('surveys/delete/<int:pk>/', views.SurveyDeleteView.as_view(), name='survey_delete'),
     path('assessments/', views.assessment_results_view, name='assessment_results'),
     path('assessments/suggestions/', views.suggestion_list_view, name='suggestion_list'),
+
+    # Notification Management
     path('notification/read/<int:notif_id>/', views.mark_notification_read, name='read_notification'),
     path('api/check-notifications/', views.check_notifications, name='check_notifications'),
+    path('api/notifications/clear-all/', views.clear_all_notifications, name='clear_all_notifications'),
 
     # Question CRUD
     path('surveys/<int:survey_id>/questions/', views.question_list_view, name='question_list'),
@@ -55,10 +59,13 @@ urlpatterns = [
     path('dashboard/', views.dashboard_view, name='dashboard'),
     
     # Export
-    path('export/csv/', views.export_responses_csv, name='export_csv'),
-    path('export/excel/', views.export_responses_excel, name='export_excel'),
-    path('export/csv/', views.export_responses_csv, name='export_responses_csv'),
-    path('export/excel/', views.export_responses_excel, name='export_excel'),
+    path('export/dashboard/summary/', views.export_dashboard_summary, name='export_dashboard_summary'),
+    path('export/assessment/excel/', views.export_assessment_excel, name='export_assessment_excel'),
+    path('export/suggestion/excel/', views.export_suggestion_excel, name='export_suggestion_excel'),
+
+    # === [เพิ่ม CSV ตรงนี้] ===
+    path('export/assessment/csv/', views.export_assessment_csv, name='export_assessment_csv'),
+    path('export/suggestion/csv/', views.export_suggestion_csv, name='export_suggestion_csv'),
     
     # Include Groups
     path('', include(admin_urlpatterns)),

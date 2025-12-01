@@ -22,7 +22,7 @@ class SurveyForm(forms.ModelForm):
     class Meta:
         model = Survey
         fields = [
-            'title_th', 'title_en', 'description',    
+            'title_th', 'title_en', 'description', 'description_en',    
             'version_number', 'service_group', 'service_point', 'status'
         ]
         widgets = {

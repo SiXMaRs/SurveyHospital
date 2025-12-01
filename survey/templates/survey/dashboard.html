@@ -281,15 +281,15 @@
             <label for="end_date">วันสิ้นสุด:</label>
             <input type="date" id="end_date" name="end_date" value="{{ end_date }}">
             <button type="submit">กรองข้อมูล</button>
-            <a href="{% url 'survey:export_csv' %}?start_date={{ start_date }}&end_date={{ end_date }}" 
-               class="export-button csv">
-                Export CSV
-            </a>
-            
-            <a href="{% url 'survey:export_excel' %}?start_date={{ start_date }}&end_date={{ end_date }}" 
-               class="export-button excel">
-                Export Excel
-            </a>
+            <a href="{% url 'survey:export_assessment_csv' %}?{{ request.GET.urlencode }}" 
+                class="export-button csv">
+                <i class="fas fa-file-csv"></i> Export Raw CSV
+                </a>
+                
+                <a href="{% url 'survey:export_dashboard_summary' %}?{{ request.GET.urlencode }}" 
+                class="export-button excel">
+                <i class="fas fa-file-excel"></i> Export รายงานสรุป
+                </a>
             
         </form>
 
@@ -345,7 +345,7 @@
             <div class="card-content admin-item-grid">
                 {% for manager in managers_list %}
                 <div class="admin-item">
-                    <img src="https://api.dicebear.com/7.x/adventurer/svg?seed={{ manager.username }}&backgroundColor=b6e3f4,c0aede,d1d4f9" alt="Profile of {{ manager.username }}">
+                    <img src="https://api.dicebear.com/7.x/adventurer/svg?seed={{ manager.username }}&backgroundColor=b6e3f4,c0aede,d1d4f9" alt="Profile">
                     
                     <strong>{{ manager.get_full_name|default:manager.username }}</strong>
 
@@ -359,7 +359,7 @@
                     </small>
                 </div>
                 {% empty %}
-                <p style="text-align: center;">ไม่พบข้อมูลผู้ดูแล</p>
+                <p style="text-align: center; grid-column: 1 / -1;">ไม่พบข้อมูลผู้ดูแล</p>
                 {% endfor %}
             </div>
         </div>
@@ -369,11 +369,17 @@
             <div class="card-content" id="feedback-ticker">
                 {% for feedback in recent_feedback %}
                 <div class="feedback-item">
-                    <p>"{{ feedback.answer_value|truncatewords:20 }}"</p>
-                    <span>จาก: <strong>{{ feedback.response.service_point.name }}</strong> ({{ feedback.response.submitted_at|date:"d M Y, H:i" }})</span>
+                    <p style="font-style: italic; color: #555;">"{{ feedback.answer_text }}"</p>
+                    
+                    <div style="margin-top: 5px; font-size: 0.85em; color: #888;">
+                        <span style="color: #007bff; font-weight: bold;">{{ feedback.response.service_point.name }}</span>
+                        <span>• {{ feedback.response.submitted_at|date:"d M Y, H:i" }}</span>
+                    </div>
                 </div>
                 {% empty %}
-                <p style="text-align: center;">ยังไม่มีข้อเสนอแนะในช่วงวันที่นี้</p>
+                <div style="display: flex; justify-content: center; align-items: center; height: 100%; color: #999;">
+                    ยังไม่มีข้อเสนอแนะในช่วงเวลานี้
+                </div>
                 {% endfor %}
             </div>
         </div>
